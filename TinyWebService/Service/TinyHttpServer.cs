@@ -27,13 +27,13 @@ namespace TinyWebService.Service
 
         private readonly IDictionary<string, Session> _sessions = new ConcurrentDictionary<string, Session>(StringComparer.OrdinalIgnoreCase);
 
-        public TinyHttpServer(string name, int port, Func<Session> sessionFactory)
+        public TinyHttpServer(string name, int port, Func<Session> sessionFactory, bool allowExternalConnections = false)
         {
             _rootPath = "/" + name + "/";
             _metadataPath = _rootPath + "_metadata";
             _sessionFactory = sessionFactory;
             _listener = new HttpListener();
-            _listener.Prefixes.Add(CreatePrefix(null, port, name));
+            _listener.Prefixes.Add(CreatePrefix(allowExternalConnections ? "*" : null, port, name));
             _listener.Start();
 
             Run();

@@ -5,11 +5,11 @@ namespace TinyWebService
 {
     public static class TinyService
     {
-        public static IDisposable Run<T>(T service, string name, int port = TinyHttpServer.DefaultPort)
+        public static IDisposable Run<T>(T service, string name, int port = TinyHttpServer.DefaultPort, bool allowExternalConnections = false)
             where T : class
         {
             var dispatcher = new SimpleDispatcher<T>(service);
-            return new TinyHttpServer(name, port, () => new Session(dispatcher));
+            return new TinyHttpServer(name, port, () => new Session(dispatcher), allowExternalConnections);
         }
     }
 }
