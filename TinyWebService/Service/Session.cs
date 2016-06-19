@@ -1,35 +1,104 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
+using TinyWebService.Protocol;
+using TinyWebService.Utilities;
 
 namespace TinyWebService.Service
 {
-    internal sealed class Session
+    internal sealed class Session : IDisposable
     {
-        private readonly IDictionary<string, ISimpleDispatcher> _instances = new ConcurrentDictionary<string, ISimpleDispatcher>();
+        private readonly ConcurrentDictionary<string, RegisteredInstance> _instances = new ConcurrentDictionary<string, RegisteredInstance>();
         private readonly ISimpleDispatcher _rootInstance;
+        private readonly ITimer _cleanupTimer;
+        private long _currentOperationId;
+        private long _cleanupOperationId;
 
-        private long _nextInstanceId;
-
-        public Session(ISimpleDispatcher rootInstance)
+        public Session(ISimpleDispatcher rootInstance, ITimer cleanupTimer)
         {
             _rootInstance = rootInstance;
+            _cleanupTimer = cleanupTimer;
+            _cleanupTimer.Tick += CleanupTimer_Tick;
         }
 
-        public string Execute(string instanceId, string path, IDictionary<string, string> parameters)
+        public void Dispose()
         {
-            var instance = string.IsNullOrEmpty(instanceId) ? _rootInstance : _instances[instanceId];
-            var result = instance.Execute(path, parameters);
+            _cleanupTimer.Tick -= CleanupTimer_Tick;
+            _cleanupTimer.Dispose();
+        }
+
+        private void CleanupTimer_Tick()
+        {
+            var toClean = _instances.Where(x => x.Value.LastOperationId <= _cleanupOperationId).Select(x => x.Key).ToList();
+            foreach (var id in toClean)
+            {
+                RegisteredInstance instance;
+                if (_instances.TryRemove(id, out instance))
+                {
+                    instance.Dispatcher.Dispose();
+                }
+            }
+
+            _cleanupOperationId = Interlocked.Read(ref _currentOperationId);
+        }
+
+        public string Execute(string absolutePath, string query)
+        {
+            var index = absolutePath.IndexOf("/", 1);
+            var path = absolutePath.Substring(index + 1);
+
+            if (path == TinyProtocol.MetadataPath)
+            {
+                return "<meta/>";
+            }
+
+            var parameters = ParseQuery(query);
+            string instanceId;
+            parameters.TryGetValue(TinyProtocol.InstanceIdParameterName, out instanceId);
+            var operationId = Interlocked.Increment(ref _currentOperationId);
+
+            var dispatcher = _rootInstance;
+            if (!string.IsNullOrEmpty(instanceId))
+            {
+                var instance = _instances[instanceId];
+                instance.LastOperationId = operationId;
+                dispatcher = instance.Dispatcher;
+            }
+
+            var result = dispatcher.Execute(path, parameters);
 
             var newInstance = result as ISimpleDispatcher;
             if (newInstance != null)
             {
-                var newInstanceId = Interlocked.Increment(ref _nextInstanceId).ToString();
-                _instances[newInstanceId] = newInstance;
+                var newInstanceId = Guid.NewGuid().ToString("N");
+                _instances[newInstanceId] = new RegisteredInstance(newInstance, operationId);
                 return newInstanceId;
             }
 
             return (string)result;
+        }
+
+        private static IDictionary<string, string> ParseQuery(string query)
+        {
+            return query
+                .TrimStart('?')
+                .Split(new[] { '&' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Split('='))
+                .ToDictionary(x => x[0], x => x[1]);
+        }
+
+        private sealed class RegisteredInstance
+        {
+            public RegisteredInstance(ISimpleDispatcher dispatcher, long operationId)
+            {
+                Dispatcher = dispatcher;
+                LastOperationId = operationId;
+            }
+
+            public ISimpleDispatcher Dispatcher { get; }
+            public long LastOperationId { get; set; }
         }
     }
 }

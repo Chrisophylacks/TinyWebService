@@ -37,6 +37,22 @@ namespace TinyWebService.Service
             return _dispatcher.Invoke(() => ExecuteInternal(path, parameters));
         }
 
+        public void Dispose()
+        {
+            var disposableInstance = _instance as IDisposable;
+            if (disposableInstance != null)
+            {
+                if (_dispatcher == null)
+                {
+                    disposableInstance.Dispose();
+                }
+                else
+                {
+                    _dispatcher.BeginInvoke(new Action(() => disposableInstance.Dispose()));
+                }
+            }
+        }
+
         private object ExecuteInternal(string path, IDictionary<string, string> parameters)
         {
             return Actions.GetOrAdd(path, BindAction)(_instance, parameters);

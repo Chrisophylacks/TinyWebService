@@ -8,6 +8,7 @@ namespace TinyWebService.Protocol
     internal static class TinyProtocol
     {
         public const string InstanceIdParameterName = "instanceId";
+        public const string MetadataPath = "_metadata";
 
         public static bool IsSerializableType(Type type)
         {
@@ -45,6 +46,11 @@ namespace TinyWebService.Protocol
 
         public static Expression Deserialize(this Expression value, Type targetType)
         {
+            if (targetType == typeof(void))
+            {
+                return Expression.Empty();
+            }
+
             if (targetType == typeof(string))
             {
                 return value;

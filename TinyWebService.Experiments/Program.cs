@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace TinyWebService.Experiments
@@ -70,14 +71,15 @@ namespace TinyWebService.Experiments
     {
         static void Main(string[] args)
         {
-            using (TinyService.Run(new Root("test"), "test", 1234))
+            using (TinyService.Run(new Root("test"), "test" , new TinyServiceOptions()))
             {
-                var client = TinyClient.Create<IRoot>("test", 1234);
+                var client = TinyClient.Create<IRoot>("test");
 
                 Console.WriteLine(client.Environment);
 
                 var clone = client.Clone();
                 Console.WriteLine(clone.Environment);
+
                 Console.ReadLine();
             }
         }

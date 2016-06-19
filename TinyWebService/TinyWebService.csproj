@@ -51,12 +51,15 @@
     <Compile Include="Reflection\TypeBuilderExtensions.cs" />
     <Compile Include="Reflection\TypeExtensions.cs" />
     <Compile Include="Service\ISimpleDispatcher.cs" />
+    <Compile Include="Utilities\ITimer.cs" />
     <Compile Include="Service\Session.cs" />
     <Compile Include="Service\SimpleDispatcher.cs" />
+    <Compile Include="Utilities\SimpleTimer.cs" />
     <Compile Include="Service\TinyHttpServer.cs" />
     <Compile Include="TinyClient.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TinyService.cs" />
+    <Compile Include="TinyServiceOptions.cs" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
