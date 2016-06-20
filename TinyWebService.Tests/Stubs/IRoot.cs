@@ -9,5 +9,7 @@ namespace TinyWebService.Tests.Stubs
         string Combine(string delimiter);
 
         IValueContainer<string> CreateContainer(string initialValue);
+
+        IValueContainer<double> DoubleContainer { get; }
     }
 }

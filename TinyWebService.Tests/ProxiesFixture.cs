@@ -7,7 +7,7 @@ using TinyWebService.Tests.Stubs;
 namespace TinyWebService.Tests
 {
     [TestFixture]
-    public sealed class CustomProxiesFixture
+    public sealed class ProxiesFixture
     {
         private Mock<IExecutor> _executor;
 
@@ -33,6 +33,26 @@ namespace TinyWebService.Tests
 
             intValue.ShouldBe(1);
             stringValue.ShouldBe("a");
+        }
+
+        [TestCase(1, "1")]
+        [TestCase(1.0, "1")]
+        [TestCase(1.23, "1.23")]
+        [TestCase(1.23f, "1.23")]
+        [TestCase("123", "123")]
+        [TestCase(1L, "1")]
+        [TestCase(12345678901234L, "12345678901234")]
+        public void ShouldSerializeSimpleTypes<T>(T value, string serializedValue)
+        {
+            _executor.Setup(x => x.Execute("UpdateValue?instanceId=instance&value=" + serializedValue)).Returns(string.Empty);
+            _executor.Setup(x => x.Execute("Value?instanceId=instance")).Returns(serializedValue);
+
+            var proxy = ProxyBuilder.CreateProxy<IValueContainer<T>>(_executor.Object, "instance");
+            proxy.UpdateValue(value);
+            proxy.Value.ShouldBe(value);
+
+            _executor.Verify(x => x.Execute("UpdateValue?instanceId=instance&value=" + serializedValue), Times.Once());
+            _executor.Verify(x => x.Execute("Value?instanceId=instance"), Times.Once());
         }
 
         public class CustomProxyFactory

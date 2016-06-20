@@ -55,7 +55,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CustomProxiesFixture.cs" />
+    <Compile Include="ProxiesFixture.cs" />
     <Compile Include="Stubs\DynamicValue.cs" />
     <Compile Include="Stubs\IDynamicRoot.cs" />
     <Compile Include="SimpleDispatcherFixture.cs" />

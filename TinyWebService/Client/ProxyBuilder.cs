@@ -128,7 +128,7 @@ namespace TinyWebService.Client
                 var sb = Expression.Parameter(typeof(StringBuilder));
                 var block = new List<Expression>();
                 block.Add(Expression.Assign(sb, builder.This.CallMember(CreateQuery)));
-                block.AddRange(builder.Parameters.Select(x => builder.This.CallMember(AppendParameter, sb, Expression.Constant(x.Name), x)));
+                block.AddRange(builder.Parameters.Select(x => builder.This.CallMember(AppendParameter, sb, Expression.Constant(x.Name), x.Serialize())));
                 if (CanBuildProxy(method.ReturnType))
                 {
                     block.Add(builder.This.CallMember(CreateDetachedProxy.MakeGenericMethod(method.ReturnType), Expression.Constant(method.Name), sb));
@@ -203,7 +203,7 @@ namespace TinyWebService.Client
             var sb = Expression.Parameter(typeof(StringBuilder));
             var block = new List<Expression>();
             block.Add(Expression.Assign(sb, builder.This.CallMember(CreateQuery)));
-            block.Add(builder.This.CallMember(AppendParameter, sb, Expression.Constant("value"), builder.Value));
+            block.Add(builder.This.CallMember(AppendParameter, sb, Expression.Constant("value"), builder.Value.Serialize()));
             if (TinyProtocol.IsSerializableType(property.PropertyType))
             {
                 block.Add(builder.This.CallMember(ExecuteQuery, Expression.Constant(property.Name), sb).Deserialize(property.PropertyType));

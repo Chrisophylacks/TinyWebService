@@ -48,7 +48,7 @@ namespace TinyWebService.Protocol
         {
             if (targetType == typeof(void))
             {
-                return Expression.Empty();
+                return Expression.Block(typeof (void), value);
             }
 
             if (targetType == typeof(string))
