@@ -1,4 +1,6 @@
-﻿using Moq;
+﻿using System;
+using System.Linq.Expressions;
+using Moq;
 using NUnit.Framework;
 using Shouldly;
 using TinyWebService.Client;
@@ -19,7 +21,7 @@ namespace TinyWebService.Tests
         }
 
         [Test]
-        public void ShoudSupplyGenericProxy()
+        public void ShouldSupplyGenericProxy()
         {
             _executor.Setup(x => x.Execute("a/b/IntValue/CurrentValue?instanceId=instance")).Returns("1");
             _executor.Setup(x => x.Execute("a/b/StringValue/CurrentValue?instanceId=instance")).Returns("a");
@@ -33,6 +35,40 @@ namespace TinyWebService.Tests
 
             intValue.ShouldBe(1);
             stringValue.ShouldBe("a");
+        }
+
+        [Test]
+        public void ShouldSerializeNulls()
+        {
+            _executor.Setup(x => x.Execute("Clone")).Returns("");
+
+            var proxy = ProxyBuilder.CreateProxy<IRoot>(_executor.Object);
+            proxy.Clone().ShouldBe(null);
+
+            _executor.Verify(x => x.Execute("Clone"), Times.Once());
+        }
+
+        [Test]
+        public void ShouldSerializeStringNulls()
+        {
+            _executor.Setup(x => x.Execute("a/StringValue/Value?instanceId=instance")).Returns("");
+
+            var proxy = ProxyBuilder.CreateProxy<IRoot>(_executor.Object, "instance", "a");
+            proxy.StringValue.Value.ShouldBe(string.Empty);
+
+            proxy.StringValue.UpdateValue(null);
+            _executor.Verify(x => x.Execute("a/StringValue/Value?instanceId=instance"), Times.Once());
+            _executor.Verify(x => x.Execute("a/StringValue/UpdateValue?instanceId=instance&value="), Times.Once());
+        }
+
+        [Test]
+        public void ShouldThrowOnGenericMethods()
+        {
+            var proxy = ProxyBuilder.CreateProxy<IGenericFinder>(_executor.Object);
+            new Action(() => { proxy.Find<string>("key"); }).ShouldThrow<InvalidOperationException>();
+            new Action(() => { proxy.Find<int>("key"); }).ShouldThrow<InvalidOperationException>();
+            new Action(() => { proxy.Test<string>(); }).ShouldThrow<InvalidOperationException>();
+            new Action(() => { proxy.Test<int>(); }).ShouldThrow<InvalidOperationException>();
         }
 
         [TestCase(1, "1")]

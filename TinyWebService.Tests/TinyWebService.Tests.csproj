@@ -60,6 +60,7 @@
     <Compile Include="Stubs\IDynamicRoot.cs" />
     <Compile Include="SimpleDispatcherFixture.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Stubs\IGenericFinder.cs" />
     <Compile Include="Stubs\IRoot.cs" />
     <Compile Include="Stubs\IValueContainer.cs" />
     <Compile Include="Stubs\Root.cs" />

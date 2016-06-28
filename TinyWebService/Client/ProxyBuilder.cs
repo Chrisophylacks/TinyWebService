@@ -25,6 +25,9 @@ namespace TinyWebService.Client
         private static readonly MethodInfo CreateMemberProxy;
         private static readonly MethodInfo CreateDetachedProxy;
         private static readonly MethodInfo AppendParameter;
+        private static readonly MethodInfo HandleGenericMethod;
+
+        private static readonly ConstructorInfo ExceptionConstructor;
 
         static ProxyBuilder()
         {
@@ -37,6 +40,9 @@ namespace TinyWebService.Client
             CreateMemberProxy = typeof(ProxyBase).GetMethod("CreateMemberProxy", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             CreateDetachedProxy = typeof(ProxyBase).GetMethod("CreateDetachedProxy", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             AppendParameter = typeof(ProxyBase).GetMethod("AppendParameter", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            HandleGenericMethod = typeof(ProxyBase).GetMethod("HandleGeneric", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+
+            ExceptionConstructor = typeof (InvalidOperationException).GetConstructor(new[] { typeof (string) });
         }
 
         public static void Dump()
@@ -63,6 +69,18 @@ namespace TinyWebService.Client
 
                 CustomFactories[method.ReturnType.IsGenericType ? method.ReturnType.GetGenericTypeDefinition() : method.ReturnType] = method;
             }
+        }
+
+        private static T Throw<T>()
+            where T : class
+        {
+            return CreateProxy<T>(null);
+            throw new InvalidOperationException("cannot invoke generic method");
+        }
+
+        private static void Throw()
+        {
+            throw new InvalidOperationException("cannot invoke generic method");
         }
 
         private static bool CanBuildProxy(Type type)
@@ -123,6 +141,25 @@ namespace TinyWebService.Client
                     continue;
                 }
 
+                if (method.IsGenericMethod)
+                {
+                    var parameters = method.GetParameters();
+                    var parameterTypes = parameters.Select(x => x.ParameterType).ToArray();
+                    var methodBuilder = typeBuilder.DefineMethod(method.Name, method.Attributes & ~MethodAttributes.Abstract, method.CallingConvention, method.ReturnType, parameterTypes);
+                    methodBuilder.DefineGenericParameters(method.GetGenericArguments().Select(x => x.Name).ToArray());
+                    var il = methodBuilder.GetILGenerator();
+                    il.Emit(OpCodes.Ldstr, "cannot invoke generic method");
+                    il.Emit(OpCodes.Newobj, ExceptionConstructor);
+                    il.Emit(OpCodes.Throw);
+                    if (method.ReturnType != typeof (void))
+                    {
+                        il.Emit(OpCodes.Ldloc, il.DeclareLocal(method.ReturnType));
+                    }
+                    il.Emit(OpCodes.Ret);
+
+                    continue;
+                }
+
                 var builder = typeBuilder.DefineExpressionMethod(method);
 
                 var sb = Expression.Parameter(typeof(StringBuilder));
@@ -139,7 +176,7 @@ namespace TinyWebService.Client
                 }
                 else
                 {
-                    block.Add(Expression.Throw(Expression.New(typeof(Exception).GetConstructor(new[] { typeof(string) }), Expression.Constant("incompatible return type"))));
+                    block.Add(Expression.Throw(Expression.New(ExceptionConstructor, Expression.Constant("incompatible return type"))));
                     block.Add(Expression.Default(method.ReturnType));
                 }
 

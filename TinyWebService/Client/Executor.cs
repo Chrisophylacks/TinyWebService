@@ -19,12 +19,31 @@ namespace TinyWebService.Client
 
         public string Execute(string pathAndQuery)
         {
-            var request = (HttpWebRequest)WebRequest.Create(new Uri(_prefix + pathAndQuery));
+            var request = (HttpWebRequest) WebRequest.Create(new Uri(_prefix + pathAndQuery));
             request.CookieContainer = _cookies;
             request.Timeout = Timeout;
 
-            using (var response = request.GetResponse())
-            using (var sr = new StreamReader(response.GetResponseStream()))
+            try
+            {
+                using (var response = request.GetResponse())
+                {
+                    return ReadStream(response.GetResponseStream());
+                }
+            }
+            catch (WebException ex)
+            {
+                if (ex.Response == null)
+                {
+                    throw new TinyWebServiceException("Remote host not found");
+                }
+
+                throw new TinyWebServiceException("Remote error: " + ReadStream(ex.Response.GetResponseStream()) , ex);
+            }
+        }
+
+        private string ReadStream(Stream stream)
+        {
+            using (var sr = new StreamReader(stream))
             {
                 return sr.ReadToEnd();
             }

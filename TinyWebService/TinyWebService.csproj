@@ -51,6 +51,7 @@
     <Compile Include="Reflection\TypeBuilderExtensions.cs" />
     <Compile Include="Reflection\TypeExtensions.cs" />
     <Compile Include="Service\ISimpleDispatcher.cs" />
+    <Compile Include="TinyWebServiceException.cs" />
     <Compile Include="Utilities\ITimer.cs" />
     <Compile Include="Service\Session.cs" />
     <Compile Include="Service\SimpleDispatcher.cs" />

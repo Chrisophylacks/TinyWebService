@@ -1,8 +1,12 @@
 namespace TinyWebService.Tests.Stubs
 {
-    public interface IValueContainer<T>
+    public interface IUpdatable<T>
+    {
+        void UpdateValue(T value);
+    }
+
+    public interface IValueContainer<T> : IUpdatable<T>
     {
         T Value { get; }
-        void UpdateValue(T value);
     }
 }

@@ -56,6 +56,7 @@ namespace TinyWebService.Experiments
 
         public string Combine(string separator)
         {
+            throw new Exception("aaa");
             return First.Value + separator + Second.Value;
         }
 
@@ -71,7 +72,7 @@ namespace TinyWebService.Experiments
     {
         static void Main(string[] args)
         {
-            using (TinyService.Run(new Root("test"), "test" , new TinyServiceOptions()))
+            //using (TinyService.Run(new Root("test"), "test" , new TinyServiceOptions()))
             {
                 var client = TinyClient.Create<IRoot>("test");
 
@@ -79,6 +80,8 @@ namespace TinyWebService.Experiments
 
                 var clone = client.Clone();
                 Console.WriteLine(clone.Environment);
+
+                Console.WriteLine(clone.Combine("_"));
 
                 Console.ReadLine();
             }

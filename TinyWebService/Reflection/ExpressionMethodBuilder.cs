@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -15,12 +16,13 @@ namespace TinyWebService.Reflection
             var parameterTypes = parameters.Select(x => x.ParameterType).ToArray();
             _methodImpl = typeBuilder.DefineMethod("<>impl_" + method.Name, MethodAttributes.Private | MethodAttributes.Static, CallingConventions.Standard, method.ReturnType, new[] { typeof(object) }.Concat(parameterTypes).ToArray());
             var methodBuilder = typeBuilder.DefineMethod(method.Name, method.Attributes & ~MethodAttributes.Abstract, method.CallingConvention, method.ReturnType, parameterTypes);
+
             if (method.IsGenericMethod)
             {
                 methodBuilder.DefineGenericParameters(method.GetGenericArguments().Select(x => x.Name).ToArray());
             }
 
-            methodBuilder.GetILGenerator().EmitMethodStub(_methodImpl, parameterTypes.Length);
+            methodBuilder.GetILGenerator().EmitMethodStub(_methodImpl.IsGenericMethod ? _methodImpl.MakeGenericMethod(method.GetGenericArguments()) : _methodImpl, parameterTypes.Length);
             Method = methodBuilder;
 
             This = Expression.Parameter(typeof(object), "@this");

@@ -6,6 +6,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Windows.Threading;
 using TinyWebService.Protocol;
+using TinyWebService.Reflection;
 
 namespace TinyWebService.Service
 {
@@ -67,7 +68,7 @@ namespace TinyWebService.Service
             var entries = path.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
             for (int i = 0; i < entries.Length; ++i)
             {
-                var property = current.Type.GetProperty(entries[i], BindingFlags.Public | BindingFlags.Instance);
+                var property = current.Type.GetTypeHierarchy().Select(x => x.GetProperty(entries[i], BindingFlags.Public | BindingFlags.Instance)).FirstOrDefault(x => x != null);
                 if (property != null)
                 {
                     current = Expression.Property(current, property);
@@ -76,11 +77,18 @@ namespace TinyWebService.Service
 
                 if (i != entries.Length - 1)
                 {
-                    throw new Exception("member not found");
+                    current = ThrowExpression(string.Format("member '{0}' not found", entries[i]));
+                    break;
                 }
 
                 var indexer = typeof (IDictionary<string, string>).GetProperty("Item");
-                var method = current.Type.GetMethod(entries[i], BindingFlags.Public | BindingFlags.Instance);
+                var method = current.Type.GetTypeHierarchy().Select(x => x.GetMethod(entries[i], BindingFlags.Public | BindingFlags.Instance)).FirstOrDefault(x => x != null);
+                if (method == null)
+                {
+                    current = ThrowExpression(string.Format("member '{0}' not found", entries[i]));
+                    break;
+                }
+
                 current = Expression.Call(
                     current,
                     method,
@@ -104,6 +112,14 @@ namespace TinyWebService.Service
                 Expression.Convert(current, typeof(object)),
                 target,
                 parameters).Compile();
+        }
+
+        private Expression ThrowExpression(string message)
+        {
+            return Expression.Block(
+                Expression.Throw(
+                    Expression.New(typeof (InvalidOperationException).GetConstructor(new[] { typeof (string) }), Expression.Constant(message))),
+                Expression.Constant(string.Empty));
         }
     }
 }

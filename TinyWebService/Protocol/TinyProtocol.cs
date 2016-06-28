@@ -41,7 +41,12 @@ namespace TinyWebService.Protocol
                     Expression.Property(null, typeof(CultureInfo).GetProperty("InvariantCulture")));
             }
 
-            throw new Exception("cannot serialize expression");
+            if (value.Type.IsEnum)
+            {
+                return Expression.Call(value, value.Type.GetMethod("ToString", Type.EmptyTypes));
+            }
+
+            throw new Exception("cannot serialize expression of type " + value.Type);
         }
 
         public static Expression Deserialize(this Expression value, Type targetType)
@@ -65,7 +70,16 @@ namespace TinyWebService.Protocol
                     Expression.Property(null, typeof(CultureInfo).GetProperty("InvariantCulture")));
             }
 
-            throw new Exception("cannot deserialize expression");
+            if (targetType.IsEnum)
+            {
+                return Expression.Call(
+                    typeof (Enum).GetMethod("Parse", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof (Type), typeof (string), typeof (bool) }, null),
+                    Expression.Constant(targetType),
+                    value,
+                    Expression.Constant(true));
+            }
+
+            throw new Exception("cannot deserialize expression to type " + targetType);
         }
     }
 }
