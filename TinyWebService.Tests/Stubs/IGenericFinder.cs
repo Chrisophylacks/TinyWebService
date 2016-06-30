@@ -4,5 +4,6 @@ namespace TinyWebService.Tests.Stubs
     {
         T Find<T>(string key);
         void Test<T>();
+        void Find(decimal value);
     }
 }

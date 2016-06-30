@@ -1,7 +1,9 @@
-﻿namespace TinyWebService.Client
+﻿using System.Threading.Tasks;
+
+namespace TinyWebService.Client
 {
     internal interface IExecutor
     {
-        string Execute(string pathAndQuery);
+        Task<string> Execute(string pathAndQuery);
     }
 }

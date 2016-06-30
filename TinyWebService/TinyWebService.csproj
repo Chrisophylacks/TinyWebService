@@ -32,6 +32,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Web" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -44,12 +45,15 @@
     <Compile Include="Client\IExecutor.cs" />
     <Compile Include="Client\ProxyBase.cs" />
     <Compile Include="Client\ProxyBuilder.cs" />
+    <Compile Include="Protocol\Serializer.cs" />
     <Compile Include="Protocol\TinyProtocol.cs" />
     <Compile Include="Reflection\ExpressionConstructorBuilder.cs" />
     <Compile Include="Reflection\ExpressionMethodBuilder.cs" />
     <Compile Include="Reflection\ExpressionPropertyBuilder.cs" />
+    <Compile Include="Reflection\AsyncTypeSignature.cs" />
     <Compile Include="Reflection\TypeBuilderExtensions.cs" />
     <Compile Include="Reflection\TypeExtensions.cs" />
+    <Compile Include="Service\DispatcherHelpers.cs" />
     <Compile Include="Service\ISimpleDispatcher.cs" />
     <Compile Include="TinyWebServiceException.cs" />
     <Compile Include="Utilities\ITimer.cs" />

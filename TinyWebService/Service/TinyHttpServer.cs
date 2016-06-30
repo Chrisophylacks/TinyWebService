@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Text;
+using System.Web;
 
 namespace TinyWebService.Service
 {
@@ -36,31 +37,32 @@ namespace TinyWebService.Service
         {
             while (!_isDisposed)
             {
-                HttpListenerContext context;
                 try
                 {
-                    context = await _listener.GetContextAsync();
+                    HandleRespose(await _listener.GetContextAsync().ConfigureAwait(false));
                 }
                 catch (HttpListenerException)
                 {
-                    continue;
                 }
-
-                string response;
-                try
-                {
-                    response = _session.Execute(context.Request.Url.AbsolutePath, context.Request.Url.Query);
-                }
-                catch (Exception ex)
-                {
-                    context.Response.StatusCode = 500;
-                    response = ex.ToString();
-                }
-
-                var responseBuffer = Encoding.UTF8.GetBytes(response);
-                context.Response.OutputStream.Write(responseBuffer, 0, responseBuffer.Length);
-                context.Response.OutputStream.Close();
             }
+        }
+
+        private async void HandleRespose(HttpListenerContext context)
+        {
+            string response;
+            try
+            {
+                response = await _session.Execute(HttpUtility.UrlDecode(context.Request.Url.AbsolutePath), HttpUtility.UrlDecode(context.Request.Url.Query));
+            }
+            catch (Exception ex)
+            {
+                context.Response.StatusCode = 500;
+                response = ex.ToString();
+            }
+
+            var responseBuffer = Encoding.UTF8.GetBytes(response);
+            context.Response.OutputStream.Write(responseBuffer, 0, responseBuffer.Length);
+            context.Response.OutputStream.Close();
         }
     }
 }

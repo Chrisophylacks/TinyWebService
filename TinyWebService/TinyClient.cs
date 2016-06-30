@@ -1,4 +1,6 @@
-﻿using TinyWebService.Protocol;
+﻿using System;
+using System.Runtime.ExceptionServices;
+using TinyWebService.Protocol;
 using TinyWebService.Service;
 
 namespace TinyWebService
@@ -11,7 +13,16 @@ namespace TinyWebService
             where T : class
         {
             var executor = new Executor(TinyHttpServer.CreatePrefix(hostname, port, name)) { Timeout = 1000 };
-            executor.Execute(TinyProtocol.MetadataPath);
+
+            try
+            {
+                executor.Execute(TinyProtocol.MetadataPath).Wait();
+            }
+            catch (AggregateException ex)
+            {
+                ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
+            }
+
             executor.Timeout = 30000;
             return ProxyBuilder.CreateProxy<T>(executor);
         }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Net;
+using System.Threading.Tasks;
 
 namespace TinyWebService.Client
 {
@@ -17,7 +18,7 @@ namespace TinyWebService.Client
 
         public int Timeout { get; set; }
 
-        public string Execute(string pathAndQuery)
+        public async Task<string> Execute(string pathAndQuery)
         {
             var request = (HttpWebRequest) WebRequest.Create(new Uri(_prefix + pathAndQuery));
             request.CookieContainer = _cookies;
@@ -25,7 +26,7 @@ namespace TinyWebService.Client
 
             try
             {
-                using (var response = request.GetResponse())
+                using (var response = await request.GetResponseAsync())
                 {
                     return ReadStream(response.GetResponseStream());
                 }

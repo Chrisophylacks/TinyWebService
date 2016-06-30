@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Threading.Tasks;
 using TinyWebService.Protocol;
 
 namespace TinyWebService.Client
@@ -16,9 +17,14 @@ namespace TinyWebService.Client
             _instanceId = instanceId;
         }
 
-        protected string ExecuteQuery(string subPath, StringBuilder query)
+        protected Task ExecuteQuery(string subPath, StringBuilder query)
         {
             return _executor.Execute(_pathPrefix + subPath + query);
+        }
+
+        protected async Task<T> ExecuteQueryRet<T>(string subPath, StringBuilder query)
+        {
+            return Serializer<T>.Deserialize(await _executor.Execute(_pathPrefix + subPath + query));
         }
 
         protected T CreateMemberProxy<T>(string subPath)
@@ -27,10 +33,10 @@ namespace TinyWebService.Client
             return ProxyBuilder.CreateProxy<T>(_executor, _instanceId, _pathPrefix + subPath);
         }
 
-        protected T CreateDetachedProxy<T>(string subPath, StringBuilder query)
+        protected async Task<T> CreateDetachedProxy<T>(string subPath, StringBuilder query)
             where T : class
         {
-            var instanceId = ExecuteQuery(subPath, query);
+            var instanceId = await _executor.Execute(_pathPrefix + subPath + query);
             if (string.IsNullOrEmpty(instanceId))
             {
                 return null;

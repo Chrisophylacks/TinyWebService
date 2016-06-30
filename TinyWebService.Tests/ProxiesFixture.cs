@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using System.Linq.Expressions;
 using Moq;
 using NUnit.Framework;
@@ -23,8 +24,8 @@ namespace TinyWebService.Tests
         [Test]
         public void ShouldSupplyGenericProxy()
         {
-            _executor.Setup(x => x.Execute("a/b/IntValue/CurrentValue?instanceId=instance")).Returns("1");
-            _executor.Setup(x => x.Execute("a/b/StringValue/CurrentValue?instanceId=instance")).Returns("a");
+            _executor.Setup(x => x.Execute("a/b/IntValue/CurrentValue?instanceId=instance")).Returns(Task.FromResult("1"));
+            _executor.Setup(x => x.Execute("a/b/StringValue/CurrentValue?instanceId=instance")).Returns(Task.FromResult("a"));
 
             var proxy = ProxyBuilder.CreateProxy<IDynamicRoot>(_executor.Object, "instance", "a/b");
             var intValue = proxy.IntValue.CurrentValue;
@@ -40,7 +41,7 @@ namespace TinyWebService.Tests
         [Test]
         public void ShouldSerializeNulls()
         {
-            _executor.Setup(x => x.Execute("Clone")).Returns("");
+            _executor.Setup(x => x.Execute("Clone")).Returns(Task.FromResult(""));
 
             var proxy = ProxyBuilder.CreateProxy<IRoot>(_executor.Object);
             proxy.Clone().ShouldBe(null);
@@ -51,7 +52,7 @@ namespace TinyWebService.Tests
         [Test]
         public void ShouldSerializeStringNulls()
         {
-            _executor.Setup(x => x.Execute("a/StringValue/Value?instanceId=instance")).Returns("");
+            _executor.Setup(x => x.Execute("a/StringValue/Value?instanceId=instance")).Returns(Task.FromResult(""));
 
             var proxy = ProxyBuilder.CreateProxy<IRoot>(_executor.Object, "instance", "a");
             proxy.StringValue.Value.ShouldBe(string.Empty);
@@ -71,6 +72,13 @@ namespace TinyWebService.Tests
             new Action(() => { proxy.Test<int>(); }).ShouldThrow<InvalidOperationException>();
         }
 
+        [Test]
+        public void ShouldThrowOnMethodWithNonSerializableParameters()
+        {
+            var proxy = ProxyBuilder.CreateProxy<IGenericFinder>(_executor.Object);
+            new Action(() => { proxy.Find(1m); }).ShouldThrow<InvalidOperationException>();
+        }
+
         [TestCase(1, "1")]
         [TestCase(1.0, "1")]
         [TestCase(1.23, "1.23")]
@@ -80,8 +88,8 @@ namespace TinyWebService.Tests
         [TestCase(12345678901234L, "12345678901234")]
         public void ShouldSerializeSimpleTypes<T>(T value, string serializedValue)
         {
-            _executor.Setup(x => x.Execute("UpdateValue?instanceId=instance&value=" + serializedValue)).Returns(string.Empty);
-            _executor.Setup(x => x.Execute("Value?instanceId=instance")).Returns(serializedValue);
+            _executor.Setup(x => x.Execute("UpdateValue?instanceId=instance&value=" + serializedValue)).Returns(Task.FromResult(string.Empty));
+            _executor.Setup(x => x.Execute("Value?instanceId=instance")).Returns(Task.FromResult(serializedValue));
 
             var proxy = ProxyBuilder.CreateProxy<IValueContainer<T>>(_executor.Object, "instance");
             proxy.UpdateValue(value);

@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Threading.Tasks;
 using System.Windows.Threading;
 using TinyWebService.Protocol;
 using TinyWebService.Reflection;
@@ -13,10 +14,10 @@ namespace TinyWebService.Service
     internal sealed class SimpleDispatcher<T> : ISimpleDispatcher
         where T : class
     {
-        private static readonly ConcurrentDictionary<string, Func<T, IDictionary<string, string>, object>> Actions = new ConcurrentDictionary<string, Func<T, IDictionary<string, string>, object>>();
+        private static readonly ConcurrentDictionary<string, Func<T, IDictionary<string, string>, Task<object>>> Actions = new ConcurrentDictionary<string, Func<T, IDictionary<string, string>, Task<object>>>();
 
         private readonly T _instance;
-        private readonly Dispatcher _dispatcher;
+        private Dispatcher _dispatcher;
 
         public SimpleDispatcher(T instance)
         {
@@ -28,14 +29,37 @@ namespace TinyWebService.Service
             }
         }
 
-        public object Execute(string path, IDictionary<string, string> parameters)
+        public Task<object> Execute(string path, IDictionary<string, string> parameters)
         {
             if (_dispatcher == null)
             {
                 return ExecuteInternal(path, parameters);
             }
 
-            return _dispatcher.Invoke(() => ExecuteInternal(path, parameters));
+            var tcs = new TaskCompletionSource<object>();
+            _dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try
+                {
+                    var obj = await ExecuteInternal(path, parameters);
+                    (obj as ISimpleDispatcher)?.SetDispatcherIfNotPresent(_dispatcher);
+                    tcs.SetResult(obj);
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            }));
+
+            return tcs.Task;
+        }
+
+        public void SetDispatcherIfNotPresent(Dispatcher dispatcher)
+        {
+            if (_dispatcher == null)
+            {
+                _dispatcher = dispatcher;
+            }
         }
 
         public void Dispose()
@@ -54,18 +78,19 @@ namespace TinyWebService.Service
             }
         }
 
-        private object ExecuteInternal(string path, IDictionary<string, string> parameters)
+        private Task<object> ExecuteInternal(string path, IDictionary<string, string> parameters)
         {
             return Actions.GetOrAdd(path, BindAction)(_instance, parameters);
         }
 
-        private Func<T, IDictionary<string, string>, object> BindAction(string path)
+        private Func<T, IDictionary<string, string>, Task<object>> BindAction(string path)
         {
             var target = Expression.Parameter(typeof (T));
             var parameters = Expression.Parameter(typeof (IDictionary<string, string>));
 
             Expression current = target;
             var entries = path.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+
             for (int i = 0; i < entries.Length; ++i)
             {
                 var property = current.Type.GetTypeHierarchy().Select(x => x.GetProperty(entries[i], BindingFlags.Public | BindingFlags.Instance)).FirstOrDefault(x => x != null);
@@ -95,21 +120,36 @@ namespace TinyWebService.Service
                     method.GetParameters().Select(x => Expression.Property(parameters, indexer, Expression.Constant(x.Name)).Deserialize(x.ParameterType)).ToArray());
             }
 
-            if (TinyProtocol.IsSerializableType(current.Type))
+            var signature = new AsyncTypeSignature(current.Type);
+            if (TinyProtocol.IsSerializableType(signature.ReturnType))
             {
-                current = current.Serialize();
+                if (signature.ReturnType == typeof (void))
+                {
+                    if (signature.IsAsync)
+                    {
+                        current = Expression.Call(typeof (DispatcherHelpers).GetMethod("WrapTask"), current);
+                    }
+                    else
+                    {
+                        current = Expression.Block(current, Expression.Call(typeof (Task).GetMethod("FromResult").MakeGenericMethod(typeof (object)), Expression.Constant(string.Empty)));
+                    }
+                }
+                else
+                {
+                    current = Expression.Call(typeof (DispatcherHelpers).GetMethod(signature.IsAsync ? "WrapValueAsync" : "WrapValue").MakeGenericMethod(signature.ReturnType), current);
+                }
             }
-            else if (TinyProtocol.IsRemotableType(current.Type))
+            else if (TinyProtocol.IsRemotableType(signature.ReturnType))
             {
-                current = Expression.New(typeof (SimpleDispatcher<>).MakeGenericType(current.Type).GetConstructor(new[] { current.Type }), current);
+                current = Expression.Call(typeof(DispatcherHelpers).GetMethod(signature.IsAsync ? "WrapInstanceAsync" : "WrapInstance").MakeGenericMethod(signature.ReturnType), current);
             }
             else
             {
                 throw new Exception("cannot invoke method - unsupported return type");
             }
 
-            return Expression.Lambda<Func<T, IDictionary<string, string>, object>>(
-                Expression.Convert(current, typeof(object)),
+            return Expression.Lambda<Func<T, IDictionary<string, string>, Task<object>>>(
+                current,
                 target,
                 parameters).Compile();
         }

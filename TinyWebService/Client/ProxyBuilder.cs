@@ -8,6 +8,7 @@ using System.Reflection.Emit;
 using System.Text;
 using TinyWebService.Protocol;
 using TinyWebService.Reflection;
+using System.Threading.Tasks;
 
 namespace TinyWebService.Client
 {
@@ -21,11 +22,11 @@ namespace TinyWebService.Client
 
         private static readonly MethodInfo BuildProxy;
         private static readonly MethodInfo ExecuteQuery;
+        private static readonly MethodInfo ExecuteQueryRet;
         private static readonly MethodInfo CreateQuery;
         private static readonly MethodInfo CreateMemberProxy;
         private static readonly MethodInfo CreateDetachedProxy;
         private static readonly MethodInfo AppendParameter;
-        private static readonly MethodInfo HandleGenericMethod;
 
         private static readonly ConstructorInfo ExceptionConstructor;
 
@@ -36,11 +37,11 @@ namespace TinyWebService.Client
 
             BuildProxy = typeof(ProxyBuilder).GetMethod("CreateProxy", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
             ExecuteQuery = typeof (ProxyBase).GetMethod("ExecuteQuery", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            ExecuteQueryRet = typeof(ProxyBase).GetMethod("ExecuteQueryRet", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             CreateQuery = typeof(ProxyBase).GetMethod("CreateQueryBuilder", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             CreateMemberProxy = typeof(ProxyBase).GetMethod("CreateMemberProxy", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             CreateDetachedProxy = typeof(ProxyBase).GetMethod("CreateDetachedProxy", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             AppendParameter = typeof(ProxyBase).GetMethod("AppendParameter", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            HandleGenericMethod = typeof(ProxyBase).GetMethod("HandleGeneric", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
 
             ExceptionConstructor = typeof (InvalidOperationException).GetConstructor(new[] { typeof (string) });
         }
@@ -69,18 +70,6 @@ namespace TinyWebService.Client
 
                 CustomFactories[method.ReturnType.IsGenericType ? method.ReturnType.GetGenericTypeDefinition() : method.ReturnType] = method;
             }
-        }
-
-        private static T Throw<T>()
-            where T : class
-        {
-            return CreateProxy<T>(null);
-            throw new InvalidOperationException("cannot invoke generic method");
-        }
-
-        private static void Throw()
-        {
-            throw new InvalidOperationException("cannot invoke generic method");
         }
 
         private static bool CanBuildProxy(Type type)
@@ -160,23 +149,42 @@ namespace TinyWebService.Client
                     continue;
                 }
 
+                var signature = new AsyncTypeSignature(method.ReturnType);
                 var builder = typeBuilder.DefineExpressionMethod(method);
 
                 var sb = Expression.Parameter(typeof(StringBuilder));
                 var block = new List<Expression>();
                 block.Add(Expression.Assign(sb, builder.This.CallMember(CreateQuery)));
-                block.AddRange(builder.Parameters.Select(x => builder.This.CallMember(AppendParameter, sb, Expression.Constant(x.Name), x.Serialize())));
-                if (CanBuildProxy(method.ReturnType))
+
+                string errorMessage = null;
+                if (builder.Parameters.All(x => TinyProtocol.IsSerializableType(x.Type)))
                 {
-                    block.Add(builder.This.CallMember(CreateDetachedProxy.MakeGenericMethod(method.ReturnType), Expression.Constant(method.Name), sb));
-                }
-                else if (TinyProtocol.IsSerializableType(method.ReturnType))
-                {
-                    block.Add(builder.This.CallMember(ExecuteQuery, Expression.Constant(method.Name), sb).Deserialize(method.ReturnType));
+                    block.AddRange(builder.Parameters.Select(x => builder.This.CallMember(AppendParameter, sb, Expression.Constant(x.Name), x.Serialize())));
+                    if (CanBuildProxy(signature.ReturnType))
+                    {
+                        var call = builder.This.CallMember(CreateDetachedProxy.MakeGenericMethod(signature.ReturnType), Expression.Constant(method.Name), sb);
+                        block.Add(signature.IsAsync ? call : Wait(call));
+                    }
+                    else if (TinyProtocol.IsSerializableType(signature.ReturnType))
+                    {
+                        var call = signature.ReturnType == typeof (void)
+                            ? builder.This.CallMember(ExecuteQuery, Expression.Constant(method.Name), sb)
+                            : builder.This.CallMember(ExecuteQueryRet.MakeGenericMethod(signature.ReturnType), Expression.Constant(method.Name), sb);
+                        block.Add(signature.IsAsync ? call : Wait(call));
+                    }
+                    else
+                    {
+                        errorMessage = string.Format("incompatible return type '{0}'", signature.ReturnType);
+                    }
                 }
                 else
                 {
-                    block.Add(Expression.Throw(Expression.New(ExceptionConstructor, Expression.Constant("incompatible return type"))));
+                    errorMessage = "cannot serialize all parameter types";
+                }
+
+                if (errorMessage != null)
+                {
+                    block.Add(Expression.Throw(Expression.New(ExceptionConstructor, Expression.Constant(errorMessage))));
                     block.Add(Expression.Default(method.ReturnType));
                 }
 
@@ -220,7 +228,7 @@ namespace TinyWebService.Client
             block.Add(Expression.Assign(sb, builder.This.CallMember(CreateQuery)));
             if (TinyProtocol.IsSerializableType(property.PropertyType))
             {
-                block.Add(builder.This.CallMember(ExecuteQuery, Expression.Constant(property.Name), sb).Deserialize(property.PropertyType));
+                block.Add(Wait(builder.This.CallMember(ExecuteQueryRet.MakeGenericMethod(property.PropertyType), Expression.Constant(property.Name), sb)));
             }
             else
             {
@@ -243,7 +251,7 @@ namespace TinyWebService.Client
             block.Add(builder.This.CallMember(AppendParameter, sb, Expression.Constant("value"), builder.Value.Serialize()));
             if (TinyProtocol.IsSerializableType(property.PropertyType))
             {
-                block.Add(builder.This.CallMember(ExecuteQuery, Expression.Constant(property.Name), sb).Deserialize(property.PropertyType));
+                block.Add(Wait(builder.This.CallMember(ExecuteQuery, Expression.Constant(property.Name), sb)));
             }
             else
             {
@@ -256,6 +264,16 @@ namespace TinyWebService.Client
                     typeof(void),
                     new[] { sb },
                     block));
+        }
+
+        private static Expression Wait(Expression taskExpression)
+        {
+            if (taskExpression.Type.IsGenericType)
+            {
+                return Expression.Property(taskExpression, taskExpression.Type.GetProperty("Result"));
+            }
+
+            return Expression.Call(taskExpression, taskExpression.Type.GetMethod("Wait", Type.EmptyTypes));
         }
     }
 }

@@ -3,6 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Web;
 using TinyWebService.Protocol;
 using TinyWebService.Utilities;
 
@@ -44,7 +46,7 @@ namespace TinyWebService.Service
             _cleanupOperationId = Interlocked.Read(ref _currentOperationId);
         }
 
-        public string Execute(string absolutePath, string query)
+        public async Task<string> Execute(string absolutePath, string query)
         {
             var index = absolutePath.IndexOf("/", 1);
             var path = absolutePath.Substring(index + 1);
@@ -67,7 +69,7 @@ namespace TinyWebService.Service
                 dispatcher = instance.Dispatcher;
             }
 
-            var result = dispatcher.Execute(path, parameters);
+            var result = await dispatcher.Execute(path, parameters);
 
             var newInstance = result as ISimpleDispatcher;
             if (newInstance != null)
