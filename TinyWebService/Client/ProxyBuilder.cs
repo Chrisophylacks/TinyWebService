@@ -160,16 +160,16 @@ namespace TinyWebService.Client
                 if (builder.Parameters.All(x => TinyProtocol.IsSerializableType(x.Type)))
                 {
                     block.AddRange(builder.Parameters.Select(x => builder.This.CallMember(AppendParameter, sb, Expression.Constant(x.Name), x.Serialize())));
-                    if (CanBuildProxy(signature.ReturnType))
+                    if (TinyProtocol.IsSerializableType(signature.ReturnType))
                     {
-                        var call = builder.This.CallMember(CreateDetachedProxy.MakeGenericMethod(signature.ReturnType), Expression.Constant(method.Name), sb);
-                        block.Add(signature.IsAsync ? call : Wait(call));
-                    }
-                    else if (TinyProtocol.IsSerializableType(signature.ReturnType))
-                    {
-                        var call = signature.ReturnType == typeof (void)
+                        var call = signature.ReturnType == typeof(void)
                             ? builder.This.CallMember(ExecuteQuery, Expression.Constant(method.Name), sb)
                             : builder.This.CallMember(ExecuteQueryRet.MakeGenericMethod(signature.ReturnType), Expression.Constant(method.Name), sb);
+                        block.Add(signature.IsAsync ? call : Wait(call));
+                    }
+                    else if (CanBuildProxy(signature.ReturnType))
+                    {
+                        var call = builder.This.CallMember(CreateDetachedProxy.MakeGenericMethod(signature.ReturnType), Expression.Constant(method.Name), sb);
                         block.Add(signature.IsAsync ? call : Wait(call));
                     }
                     else
@@ -215,7 +215,8 @@ namespace TinyWebService.Client
 
         private static void ImplementGetter(TypeBuilder typeBuilder, ExpressionConstructorBuilder constructorBuilder, ExpressionPropertyBuilder builder, PropertyInfo property, List<Expression> constructorExpressions)
         {
-            if (CanBuildProxy(property.PropertyType))
+            bool isSerializable = TinyProtocol.IsSerializableType(property.PropertyType);
+            if (!isSerializable && CanBuildProxy(property.PropertyType))
             {
                 var field = typeBuilder.DefineField("<prx>_" + property.Name, property.PropertyType, FieldAttributes.Private);
                 constructorExpressions.Add(Expression.Assign(constructorBuilder.This.MemberField(field), constructorBuilder.This.CallMember(CreateMemberProxy.MakeGenericMethod(property.PropertyType), Expression.Constant(property.Name))));
@@ -226,7 +227,7 @@ namespace TinyWebService.Client
             var sb = Expression.Parameter(typeof(StringBuilder));
             var block = new List<Expression>();
             block.Add(Expression.Assign(sb, builder.This.CallMember(CreateQuery)));
-            if (TinyProtocol.IsSerializableType(property.PropertyType))
+            if (isSerializable)
             {
                 block.Add(Wait(builder.This.CallMember(ExecuteQueryRet.MakeGenericMethod(property.PropertyType), Expression.Constant(property.Name), sb)));
             }

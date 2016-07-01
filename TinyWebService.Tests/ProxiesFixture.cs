@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq.Expressions;
 using Moq;
@@ -96,6 +97,20 @@ namespace TinyWebService.Tests
             proxy.Value.ShouldBe(value);
 
             _executor.Verify(x => x.Execute("UpdateValue?instanceId=instance&value=" + serializedValue), Times.Once());
+            _executor.Verify(x => x.Execute("Value?instanceId=instance"), Times.Once());
+        }
+
+        [Test]
+        public void ShouldSerializeCollection()
+        {
+            _executor.Setup(x => x.Execute("UpdateValue?instanceId=instance&value=[1,2,3]")).Returns(Task.FromResult(string.Empty));
+            _executor.Setup(x => x.Execute("Value?instanceId=instance")).Returns(Task.FromResult("[1,2,3]"));
+
+            var proxy = ProxyBuilder.CreateProxy<IValueContainer<IEnumerable<int>>>(_executor.Object, "instance");
+            proxy.UpdateValue(new[] { 1, 2, 3 });
+            proxy.Value.ShouldBe(new[] { 1, 2, 3 });
+
+            _executor.Verify(x => x.Execute("UpdateValue?instanceId=instance&value=[1,2,3]"), Times.Once());
             _executor.Verify(x => x.Execute("Value?instanceId=instance"), Times.Once());
         }
 

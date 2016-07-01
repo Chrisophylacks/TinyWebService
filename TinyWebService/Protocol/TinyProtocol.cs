@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using TinyWebService.Reflection;
 
 namespace TinyWebService.Protocol
 {
@@ -12,7 +15,18 @@ namespace TinyWebService.Protocol
 
         public static bool IsSerializableType(Type type)
         {
-            return type.IsPrimitive || type == typeof (string) || type == typeof (void);
+            if (type.IsPrimitive || type == typeof (string) || type == typeof (void))
+            {
+                return true;
+            }
+
+            var itemType = type.TryGetCollectionItemType();
+            if (itemType != null)
+            {
+                return IsSerializableType(itemType);
+            }
+
+            return false;
         }
 
         public static bool IsRemotableType(Type type)
@@ -46,6 +60,12 @@ namespace TinyWebService.Protocol
                 return Expression.Call(value, value.Type.GetMethod("ToString", Type.EmptyTypes));
             }
 
+            var itemType = value.Type.TryGetCollectionItemType();
+            if (itemType != null)
+            {
+                return Expression.Call(typeof (Serializer<>).MakeGenericType(itemType).GetMethod("SerializeCollection"), value);
+            }
+
             throw new Exception("cannot serialize expression of type " + value.Type);
         }
 
@@ -77,6 +97,12 @@ namespace TinyWebService.Protocol
                     Expression.Constant(targetType),
                     value,
                     Expression.Constant(true));
+            }
+
+            var itemType = targetType.TryGetCollectionItemType();
+            if (itemType != null)
+            {
+                return Expression.Call(typeof(Serializer<>).MakeGenericType(itemType).GetMethod("DeserializeCollection"), value);
             }
 
             throw new Exception("cannot deserialize expression to type " + targetType);

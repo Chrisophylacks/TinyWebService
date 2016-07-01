@@ -33,5 +33,15 @@ namespace TinyWebService.Reflection
         {
             return type.GetInterfaces().Concat(new[] { type });
         }
+
+        public static Type TryGetCollectionItemType(this Type type)
+        {
+            if (type.IsGenericType && typeof (IEnumerable<>).IsAssignableFrom(type.GetGenericTypeDefinition()))
+            {
+                return type.GetGenericArguments()[0];
+            }
+
+            return null;
+        }
     }
 }

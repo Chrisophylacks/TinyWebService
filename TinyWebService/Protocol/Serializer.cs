@@ -2,33 +2,31 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace TinyWebService.Protocol
 {
     internal static class Serializer<T>
     {
-        private static Func<T, string> _serialize;
-        private static Func<string, T> _deserialize;
-
         static Serializer()
         {
             var value = Expression.Parameter(typeof (T));
-            _serialize = Expression.Lambda<Func<T, string>>(value.Serialize(), value).Compile();
+            Serialize = Expression.Lambda<Func<T, string>>(value.Serialize(), value).Compile();
 
             value = Expression.Parameter(typeof (string));
-            _deserialize = Expression.Lambda<Func<string, T>>(value.Deserialize(typeof(T)), value).Compile();
+            Deserialize = Expression.Lambda<Func<string, T>>(value.Deserialize(typeof(T)), value).Compile();
         }
 
-        public static string Serialize(T instance)
+        public static Func<T, string> Serialize { get; private set; }
+        public static Func<string, T> Deserialize { get; private set; }
+
+        public static string SerializeCollection(IEnumerable<T> collection)
         {
-            return _serialize(instance);
+            return "[" + string.Join(",", collection.Select(Serializer<T>.Serialize)) + "]";
         }
 
-        public static T Deserialize(string instance)
+        public static IEnumerable<T> DeserializeCollection(string value)
         {
-            return _deserialize(instance);
+            return value.Substring(1, value.Length - 2).Split(',').Select(Deserialize).ToList();
         }
     }
 }
