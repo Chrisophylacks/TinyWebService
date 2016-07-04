@@ -24,7 +24,7 @@ namespace TinyWebService.Client
 
         protected async Task<T> ExecuteQueryRet<T>(string subPath, StringBuilder query)
         {
-            return Serializer<T>.Deserialize(await _executor.Execute(_pathPrefix + subPath + query));
+            return TinyProtocol.Serializer<T>.Deserialize(await _executor.Execute(_pathPrefix + subPath + query));
         }
 
         protected T CreateMemberProxy<T>(string subPath)

@@ -13,9 +13,11 @@ namespace TinyWebService.Protocol
         public const string InstanceIdParameterName = "instanceId";
         public const string MetadataPath = "_metadata";
 
+        private static readonly IDictionary<Type, object> ExistingSerializers = new Dictionary<Type, object>();
+        
         public static bool IsSerializableType(Type type)
         {
-            if (type.IsPrimitive || type == typeof (string) || type == typeof (void))
+            if (type.IsPrimitive || type == typeof (string) || type == typeof (void) || ExistingSerializers.ContainsKey(type))
             {
                 return true;
             }
@@ -34,78 +36,136 @@ namespace TinyWebService.Protocol
             return type.IsInterface;
         }
 
-        public static Expression Serialize(this Expression value)
+        public static Expression Serialize(this Expression expression)
         {
-            if (value.Type == typeof (void))
-            {
-                return Expression.Block(value, Expression.Constant(string.Empty));
-            }
-
-            if (value.Type == typeof (string))
-            {
-                return value;
-            }
-
-            if (value.Type.IsPrimitive)
-            {
-                return Expression.Call(
-                    null,
-                    typeof (Convert).GetMethod("ToString", BindingFlags.Public | BindingFlags.Static, null, new[] { value.Type, typeof (IFormatProvider) }, null),
-                    value,
-                    Expression.Property(null, typeof(CultureInfo).GetProperty("InvariantCulture")));
-            }
-
-            if (value.Type.IsEnum)
-            {
-                return Expression.Call(value, value.Type.GetMethod("ToString", Type.EmptyTypes));
-            }
-
-            var itemType = value.Type.TryGetCollectionItemType();
-            if (itemType != null)
-            {
-                return Expression.Call(typeof (Serializer<>).MakeGenericType(itemType).GetMethod("SerializeCollection"), value);
-            }
-
-            throw new Exception("cannot serialize expression of type " + value.Type);
+            return Expression.Call(typeof (Serializer<>).MakeGenericType(expression.Type).GetMethod("Serialize", BindingFlags.Public | BindingFlags.Static), expression);
         }
 
-        public static Expression Deserialize(this Expression value, Type targetType)
+        public static Expression Deserialize(this Expression expression, Type targetType)
         {
-            if (targetType == typeof(void))
+            return Expression.Call(typeof(Serializer<>).MakeGenericType(targetType).GetMethod("Deserialize", BindingFlags.Public | BindingFlags.Static), expression);
+        }
+
+        public sealed class Serializer<T>
+        {
+            private static Serializer<T> _instance;
+
+            private readonly Func<T, string> _serialize;
+            private readonly Func<string, T> _deserialize;
+
+            private Serializer()
             {
-                return Expression.Block(typeof (void), value);
+                var value = Expression.Parameter(typeof(T));
+                _serialize = Expression.Lambda<Func<T, string>>(SerializeExpression(value), value).Compile();
+
+                value = Expression.Parameter(typeof(string));
+                _deserialize = Expression.Lambda<Func<string, T>>(DeserializeExpression(value, typeof(T)), value).Compile();
+
+                ExistingSerializers.Add(typeof(T), this);
             }
 
-            if (targetType == typeof(string))
+            private Serializer(Func<T, string> serialize, Func<string, T> deserialize)
             {
-                return value;
+                _serialize = serialize;
+                _deserialize = deserialize;
+
+                ExistingSerializers.Add(typeof(T), this);
             }
 
-            if (targetType.IsPrimitive)
+            public static Serializer<T> Instance => _instance ?? (_instance = new Serializer<T>());
+
+            public static void RegisterCustom(Func<T, string> serialize, Func<string, T> deserialize)
             {
-                return Expression.Call(
-                    null,
-                    typeof(Convert).GetMethod("To" + targetType.Name, BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(string), typeof(IFormatProvider) }, null),
-                    value,
-                    Expression.Property(null, typeof(CultureInfo).GetProperty("InvariantCulture")));
+                _instance = new Serializer<T>(serialize, deserialize);
             }
 
-            if (targetType.IsEnum)
+            public static string Serialize(T value) => Instance._serialize(value);
+
+            public static T Deserialize(string value) => Instance._deserialize(value);
+
+            private static Expression SerializeExpression(Expression value)
             {
-                return Expression.Call(
-                    typeof (Enum).GetMethod("Parse", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof (Type), typeof (string), typeof (bool) }, null),
-                    Expression.Constant(targetType),
-                    value,
-                    Expression.Constant(true));
+                if (value.Type == typeof(void))
+                {
+                    return Expression.Block(value, Expression.Constant(string.Empty));
+                }
+
+                if (value.Type == typeof(string))
+                {
+                    return value;
+                }
+
+                if (value.Type.IsPrimitive)
+                {
+                    return Expression.Call(
+                        null,
+                        typeof(Convert).GetMethod("ToString", BindingFlags.Public | BindingFlags.Static, null, new[] { value.Type, typeof(IFormatProvider) }, null),
+                        value,
+                        Expression.Property(null, typeof(CultureInfo).GetProperty("InvariantCulture")));
+                }
+
+                if (value.Type.IsEnum)
+                {
+                    return Expression.Call(value, value.Type.GetMethod("ToString", Type.EmptyTypes));
+                }
+
+                var itemType = value.Type.TryGetCollectionItemType();
+                if (itemType != null)
+                {
+                    return Expression.Call(typeof(Serializer<>).MakeGenericType(itemType).GetMethod("SerializeCollection", BindingFlags.NonPublic | BindingFlags.Static), value);
+                }
+
+                throw new Exception("cannot serialize expression of type " + value.Type);
             }
 
-            var itemType = targetType.TryGetCollectionItemType();
-            if (itemType != null)
+            private static Expression DeserializeExpression(Expression value, Type targetType)
             {
-                return Expression.Call(typeof(Serializer<>).MakeGenericType(itemType).GetMethod("DeserializeCollection"), value);
+                if (targetType == typeof(void))
+                {
+                    return Expression.Block(typeof(void), value);
+                }
+
+                if (targetType == typeof(string))
+                {
+                    return value;
+                }
+
+                if (targetType.IsPrimitive)
+                {
+                    return Expression.Call(
+                        null,
+                        typeof(Convert).GetMethod("To" + targetType.Name, BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(string), typeof(IFormatProvider) }, null),
+                        value,
+                        Expression.Property(null, typeof(CultureInfo).GetProperty("InvariantCulture")));
+                }
+
+                if (targetType.IsEnum)
+                {
+                    return Expression.Call(
+                        typeof(Enum).GetMethod("Parse", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(Type), typeof(string), typeof(bool) }, null),
+                        Expression.Constant(targetType),
+                        value,
+                        Expression.Constant(true));
+                }
+
+                var itemType = targetType.TryGetCollectionItemType();
+                if (itemType != null)
+                {
+                    return Expression.Call(typeof(Serializer<>).MakeGenericType(itemType).GetMethod("DeserializeCollection", BindingFlags.NonPublic | BindingFlags.Static), value);
+                }
+
+                throw new Exception("cannot deserialize expression to type " + targetType);
             }
 
-            throw new Exception("cannot deserialize expression to type " + targetType);
+            private static string SerializeCollection(IEnumerable<T> collection)
+            {
+                return "[" + string.Join(",", collection.Select(Instance._serialize)) + "]";
+            }
+
+            private static IEnumerable<T> DeserializeCollection(string value)
+            {
+                return value.Substring(1, value.Length - 2).Split(',').Select(Instance._deserialize).ToList();
+            }
         }
     }
 }

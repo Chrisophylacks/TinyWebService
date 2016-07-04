@@ -32,5 +32,10 @@ namespace TinyWebService
         {
             ProxyBuilder.RegisterCustomProxyFactory<TProxyFactory>();
         }
+
+        public static void RegisterCustomSerializer<TValue>(Func<TValue, string> serialize, Func<string, TValue> deserialize)
+        {
+            TinyProtocol.Serializer<TValue>.RegisterCustom(serialize, deserialize);
+        }
     }
 }

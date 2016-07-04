@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Linq.Expressions;
 using Moq;
 using NUnit.Framework;
 using Shouldly;
@@ -111,6 +110,22 @@ namespace TinyWebService.Tests
             proxy.Value.ShouldBe(new[] { 1, 2, 3 });
 
             _executor.Verify(x => x.Execute("UpdateValue?instanceId=instance&value=[1,2,3]"), Times.Once());
+            _executor.Verify(x => x.Execute("Value?instanceId=instance"), Times.Once());
+        }
+
+        [Test]
+        public void ShouldSerializeCustomTypes()
+        {
+            TinyClient.RegisterCustomSerializer(x => Convert.ToInt64(x.TotalMilliseconds).ToString(), x => TimeSpan.FromMilliseconds(long.Parse(x)));
+
+            _executor.Setup(x => x.Execute("UpdateValue?instanceId=instance&value=300000")).Returns(Task.FromResult(string.Empty));
+            _executor.Setup(x => x.Execute("Value?instanceId=instance")).Returns(Task.FromResult("300000"));
+
+            var proxy = ProxyBuilder.CreateProxy<IValueContainer<TimeSpan>>(_executor.Object, "instance");
+            proxy.UpdateValue(TimeSpan.FromMinutes(5));
+            proxy.Value.ShouldBe(TimeSpan.FromMinutes(5));
+
+            _executor.Verify(x => x.Execute("UpdateValue?instanceId=instance&value=300000"), Times.Once());
             _executor.Verify(x => x.Execute("Value?instanceId=instance"), Times.Once());
         }
 

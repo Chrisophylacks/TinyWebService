@@ -13,12 +13,12 @@ namespace TinyWebService.Service
 
         public static Task<object> WrapValue<TValue>(TValue value)
         {
-            return Task.FromResult<object>(Serializer<TValue>.Serialize(value));
+            return Task.FromResult<object>(TinyProtocol.Serializer<TValue>.Serialize(value));
         }
 
         public static async Task<object> WrapValueAsync<TValue>(Task<TValue> task)
         {
-            return Serializer<TValue>.Serialize(await task.ConfigureAwait(false));
+            return TinyProtocol.Serializer<TValue>.Serialize(await task.ConfigureAwait(false));
         }
 
         public static Task<object> WrapInstance<TInstance>(TInstance instance)

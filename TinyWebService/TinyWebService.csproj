@@ -45,7 +45,6 @@
     <Compile Include="Client\IExecutor.cs" />
     <Compile Include="Client\ProxyBase.cs" />
     <Compile Include="Client\ProxyBuilder.cs" />
-    <Compile Include="Protocol\Serializer.cs" />
     <Compile Include="Protocol\TinyProtocol.cs" />
     <Compile Include="Reflection\ExpressionConstructorBuilder.cs" />
     <Compile Include="Reflection\ExpressionMethodBuilder.cs" />
