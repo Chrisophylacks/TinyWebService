@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
@@ -17,7 +18,7 @@ namespace TinyWebService.Protocol
         
         public static bool IsSerializableType(Type type)
         {
-            if (type.IsPrimitive || type == typeof (string) || type == typeof (void) || ExistingSerializers.ContainsKey(type))
+            if (type.IsPrimitive || type == typeof (string) || type == typeof (void) || type.IsEnum || ExistingSerializers.ContainsKey(type))
             {
                 return true;
             }
@@ -141,17 +142,24 @@ namespace TinyWebService.Protocol
 
                 if (targetType.IsEnum)
                 {
-                    return Expression.Call(
-                        typeof(Enum).GetMethod("Parse", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(Type), typeof(string), typeof(bool) }, null),
-                        Expression.Constant(targetType),
-                        value,
-                        Expression.Constant(true));
+                    return Expression.Convert(
+                        Expression.Call(
+                            typeof (Enum).GetMethod("Parse", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof (Type), typeof (string), typeof (bool) }, null),
+                            Expression.Constant(targetType),
+                            value,
+                            Expression.Constant(true)),
+                        targetType);
                 }
 
                 var itemType = targetType.TryGetCollectionItemType();
                 if (itemType != null)
                 {
-                    return Expression.Call(typeof(Serializer<>).MakeGenericType(itemType).GetMethod("DeserializeCollection", BindingFlags.NonPublic | BindingFlags.Static), value);
+                    var enumerable = Expression.Call(typeof(Serializer<>).MakeGenericType(itemType).GetMethod("DeserializeCollection", BindingFlags.NonPublic | BindingFlags.Static), value);
+                    if (targetType.IsArray)
+                    {
+                        return Expression.Call(typeof (Enumerable).GetMethod("ToArray").MakeGenericMethod(itemType), enumerable);
+                    }
+                    return enumerable;
                 }
 
                 throw new Exception("cannot deserialize expression to type " + targetType);
@@ -162,7 +170,7 @@ namespace TinyWebService.Protocol
                 return "[" + string.Join(",", collection.Select(Instance._serialize)) + "]";
             }
 
-            private static IEnumerable<T> DeserializeCollection(string value)
+            private static IList<T> DeserializeCollection(string value)
             {
                 return value.Substring(1, value.Length - 2).Split(',').Select(Instance._deserialize).ToList();
             }

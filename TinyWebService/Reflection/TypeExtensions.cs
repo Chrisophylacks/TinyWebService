@@ -36,6 +36,11 @@ namespace TinyWebService.Reflection
 
         public static Type TryGetCollectionItemType(this Type type)
         {
+            if (type.IsArray)
+            {
+                return type.GetElementType();
+            }
+
             if (type.IsGenericType && typeof (IEnumerable<>).IsAssignableFrom(type.GetGenericTypeDefinition()))
             {
                 return type.GetGenericArguments()[0];
