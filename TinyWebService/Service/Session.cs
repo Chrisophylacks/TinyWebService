@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
 using TinyWebService.Protocol;
 using TinyWebService.Utilities;
 
@@ -18,7 +17,7 @@ namespace TinyWebService.Service
         private long _currentOperationId;
         private long _cleanupOperationId;
 
-        public Session(ISimpleDispatcher rootInstance, ITimer cleanupTimer)
+        public Session(ITimer cleanupTimer, ISimpleDispatcher rootInstance = null)
         {
             _rootInstance = rootInstance;
             _cleanupTimer = cleanupTimer;
@@ -29,6 +28,13 @@ namespace TinyWebService.Service
         {
             _cleanupTimer.Tick -= CleanupTimer_Tick;
             _cleanupTimer.Dispose();
+        }
+
+        public string RegisterInstance(ISimpleDispatcher dispatcher)
+        {
+            var instanceId = Guid.NewGuid().ToString("N");
+            _instances[instanceId] = new RegisteredInstance(dispatcher, Interlocked.Increment(ref _currentOperationId));
+            return instanceId;
         }
 
         private void CleanupTimer_Tick()
@@ -68,15 +74,17 @@ namespace TinyWebService.Service
                 instance.LastOperationId = operationId;
                 dispatcher = instance.Dispatcher;
             }
+            else if (dispatcher == null)
+            {
+                throw new InvalidOperationException("Callback operation must specify instanceId");
+            }
 
             var result = await dispatcher.Execute(path, parameters);
 
             var newInstance = result as ISimpleDispatcher;
             if (newInstance != null)
             {
-                var newInstanceId = Guid.NewGuid().ToString("N");
-                _instances[newInstanceId] = new RegisteredInstance(newInstance, operationId);
-                return newInstanceId;
+                return RegisterInstance(newInstance);
             }
 
             return (string)result;

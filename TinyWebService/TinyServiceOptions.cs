@@ -5,6 +5,7 @@ namespace TinyWebService
     public sealed class TinyServiceOptions
     {
         public const int DefaultPort = 14048;
+        public const int DefaultCallbackPort = 14049;
 
         public TinyServiceOptions()
         {

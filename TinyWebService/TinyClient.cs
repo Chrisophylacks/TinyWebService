@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Runtime.ExceptionServices;
 using TinyWebService.Protocol;
-using TinyWebService.Service;
 
 namespace TinyWebService
 {
@@ -12,7 +11,7 @@ namespace TinyWebService
         public static T Create<T>(string name, int port = TinyServiceOptions.DefaultPort, string hostname = null)
             where T : class
         {
-            var executor = new Executor(TinyHttpServer.CreatePrefix(hostname, port, name)) { Timeout = 1000 };
+            var executor = new Executor(TinyProtocol.CreatePrefix(hostname, port, name)) { Timeout = TimeSpan.FromSeconds(1) };
 
             try
             {
@@ -23,8 +22,13 @@ namespace TinyWebService
                 ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
             }
 
-            executor.Timeout = 30000;
+            executor.Timeout = TimeSpan.FromSeconds(30);
             return ProxyBuilder.CreateProxy<T>(executor);
+        }
+
+        public static void EnableDuplexMode(TinyServiceOptions options = null)
+        {
+            Executor.EnableDuplexMode(options ?? new TinyServiceOptions { Port = TinyServiceOptions.DefaultCallbackPort });
         }
 
         public static void RegisterCustomProxyFactory<TProxyFactory>()
@@ -36,6 +40,14 @@ namespace TinyWebService
         public static void RegisterCustomSerializer<TValue>(Func<TValue, string> serialize, Func<string, TValue> deserialize)
         {
             TinyProtocol.Serializer<TValue>.RegisterCustom(serialize, deserialize);
+        }
+
+        internal static T CreateCallbackProxy<T>(string encodedAddress)
+            where T : class
+        {
+            var address = CallbackObjectAddress.Parse(encodedAddress);
+            var executor = new Executor(TinyProtocol.CreatePrefixFromEndpoint(address.Endpoint));
+            return ProxyBuilder.CreateProxy<T>(executor, address.InstanceId);
         }
     }
 }

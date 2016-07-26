@@ -117,7 +117,7 @@ namespace TinyWebService.Service
                 current = Expression.Call(
                     current,
                     method,
-                    method.GetParameters().Select(x => Expression.Property(parameters, indexer, Expression.Constant(x.Name)).Deserialize(x.ParameterType)).ToArray());
+                    method.GetParameters().Select(x => DeserializeParameter(Expression.Property(parameters, indexer, Expression.Constant(x.Name)), x.ParameterType)).ToArray());
             }
 
             var signature = new AsyncTypeSignature(current.Type);
@@ -160,6 +160,21 @@ namespace TinyWebService.Service
                 Expression.Throw(
                     Expression.New(typeof (InvalidOperationException).GetConstructor(new[] { typeof (string) }), Expression.Constant(message))),
                 Expression.Constant(string.Empty));
+        }
+
+        private Expression DeserializeParameter(Expression parameter, Type parameterType)
+        {
+            if (TinyProtocol.IsSerializableType(parameterType))
+            {
+                return parameter.Deserialize(parameterType);
+            }
+
+            if (TinyProtocol.IsRemotableType(parameterType))
+            {
+                return Expression.Call(typeof (TinyClient).GetMethod("CreateCallbackProxy", BindingFlags.Static | BindingFlags.NonPublic).MakeGenericMethod(parameterType), parameter);
+            }
+
+            throw new InvalidOperationException(string.Format("Unsupported parameter type '{0}'", parameterType));
         }
     }
 }

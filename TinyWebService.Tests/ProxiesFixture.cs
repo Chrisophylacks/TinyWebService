@@ -24,15 +24,17 @@ namespace TinyWebService.Tests
         [Test]
         public void ShouldSupplyGenericProxy()
         {
-            _executor.Setup(x => x.Execute("a/b/IntValue/CurrentValue?instanceId=instance")).Returns(Task.FromResult("1"));
-            _executor.Setup(x => x.Execute("a/b/StringValue/CurrentValue?instanceId=instance")).Returns(Task.FromResult("a"));
+            var par = new Dictionary<string, string> { { "~i", "instance" } };
+
+            _executor.Setup(x => x.Execute("a/b/IntValue/CurrentValue", par)).Returns(Task.FromResult("1"));
+            _executor.Setup(x => x.Execute("a/b/StringValue/CurrentValue", par)).Returns(Task.FromResult("a"));
 
             var proxy = ProxyBuilder.CreateProxy<IDynamicRoot>(_executor.Object, "instance", "a/b");
             var intValue = proxy.IntValue.CurrentValue;
             var stringValue = proxy.StringValue.CurrentValue;
 
-            _executor.Verify(x => x.Execute("a/b/IntValue/CurrentValue?instanceId=instance"), Times.Once());
-            _executor.Verify(x => x.Execute("a/b/StringValue/CurrentValue?instanceId=instance"), Times.Once());
+            _executor.Verify(x => x.Execute("a/b/IntValue/CurrentValue", par), Times.Once());
+            _executor.Verify(x => x.Execute("a/b/StringValue/CurrentValue", par), Times.Once());
 
             intValue.ShouldBe(1);
             stringValue.ShouldBe("a");
@@ -41,25 +43,27 @@ namespace TinyWebService.Tests
         [Test]
         public void ShouldSerializeNulls()
         {
-            _executor.Setup(x => x.Execute("Clone")).Returns(Task.FromResult(""));
+            _executor.Setup(x => x.Execute("Clone", new Dictionary<string, string>())).Returns(Task.FromResult(""));
 
             var proxy = ProxyBuilder.CreateProxy<IRoot>(_executor.Object);
             proxy.Clone().ShouldBe(null);
 
-            _executor.Verify(x => x.Execute("Clone"), Times.Once());
+            _executor.Verify(x => x.Execute("Clone", new Dictionary<string, string>()), Times.Once());
         }
 
         [Test]
         public void ShouldSerializeStringNulls()
         {
-            _executor.Setup(x => x.Execute("a/StringValue/Value?instanceId=instance")).Returns(Task.FromResult(""));
+            var par = new Dictionary<string, string> { { "~i", "instance" } };
+            var par2 = new Dictionary<string, string> { { "~i", "instance" }, { "value", null } };
+            _executor.Setup(x => x.Execute("a/StringValue/Value", par)).Returns(Task.FromResult(""));
 
             var proxy = ProxyBuilder.CreateProxy<IRoot>(_executor.Object, "instance", "a");
             proxy.StringValue.Value.ShouldBe(string.Empty);
 
             proxy.StringValue.UpdateValue(null);
-            _executor.Verify(x => x.Execute("a/StringValue/Value?instanceId=instance"), Times.Once());
-            _executor.Verify(x => x.Execute("a/StringValue/UpdateValue?instanceId=instance&value="), Times.Once());
+            _executor.Verify(x => x.Execute("a/StringValue/Value", par), Times.Once());
+            _executor.Verify(x => x.Execute("a/StringValue/UpdateValue", par2), Times.Once());
         }
 
         [Test]
@@ -88,43 +92,52 @@ namespace TinyWebService.Tests
         [TestCase(12345678901234L, "12345678901234")]
         public void ShouldSerializeSimpleTypes<T>(T value, string serializedValue)
         {
-            _executor.Setup(x => x.Execute("UpdateValue?instanceId=instance&value=" + serializedValue)).Returns(Task.FromResult(string.Empty));
-            _executor.Setup(x => x.Execute("Value?instanceId=instance")).Returns(Task.FromResult(serializedValue));
+            var par = new Dictionary<string, string> { { "~i", "instance" } };
+            var par2 = new Dictionary<string, string> { { "~i", "instance" }, { "value", serializedValue } };
+
+            _executor.Setup(x => x.Execute("UpdateValue", par2)).Returns(Task.FromResult(string.Empty));
+            _executor.Setup(x => x.Execute("Value", par)).Returns(Task.FromResult(serializedValue));
 
             var proxy = ProxyBuilder.CreateProxy<IValueContainer<T>>(_executor.Object, "instance");
             proxy.UpdateValue(value);
             proxy.Value.ShouldBe(value);
 
-            _executor.Verify(x => x.Execute("UpdateValue?instanceId=instance&value=" + serializedValue), Times.Once());
-            _executor.Verify(x => x.Execute("Value?instanceId=instance"), Times.Once());
+            _executor.Verify(x => x.Execute("UpdateValue", par2), Times.Once());
+            _executor.Verify(x => x.Execute("Value", par), Times.Once());
         }
 
         [Test]
         public void ShouldSerializeCollection()
         {
-            _executor.Setup(x => x.Execute("UpdateValue?instanceId=instance&value=[1,2,3]")).Returns(Task.FromResult(string.Empty));
-            _executor.Setup(x => x.Execute("Value?instanceId=instance")).Returns(Task.FromResult("[1,2,3]"));
+            var par = new Dictionary<string, string> { { "~i", "instance" } };
+            var par2 = new Dictionary<string, string> { { "~i", "instance" }, { "value", "[1,2,3]" } };
+
+            _executor.Setup(x => x.Execute("UpdateValue", par2)).Returns(Task.FromResult(string.Empty));
+            _executor.Setup(x => x.Execute("Value", par)).Returns(Task.FromResult("[1,2,3]"));
 
             var proxy = ProxyBuilder.CreateProxy<IValueContainer<IEnumerable<int>>>(_executor.Object, "instance");
             proxy.UpdateValue(new[] { 1, 2, 3 });
             proxy.Value.ShouldBe(new[] { 1, 2, 3 });
 
-            _executor.Verify(x => x.Execute("UpdateValue?instanceId=instance&value=[1,2,3]"), Times.Once());
-            _executor.Verify(x => x.Execute("Value?instanceId=instance"), Times.Once());
+            _executor.Verify(x => x.Execute("UpdateValue", par2), Times.Once());
+            _executor.Verify(x => x.Execute("Value", par), Times.Once());
         }
 
         [Test]
         public void ShouldSerializeArrayCollection()
         {
-            _executor.Setup(x => x.Execute("UpdateValue?instanceId=instance&value=[1,2,3]")).Returns(Task.FromResult(string.Empty));
-            _executor.Setup(x => x.Execute("Value?instanceId=instance")).Returns(Task.FromResult("[1,2,3]"));
+            var par = new Dictionary<string, string> { { "~i", "instance" } };
+            var par2 = new Dictionary<string, string> { { "~i", "instance" }, { "value", "[1,2,3]" } };
+
+            _executor.Setup(x => x.Execute("UpdateValue", par2)).Returns(Task.FromResult(string.Empty));
+            _executor.Setup(x => x.Execute("Value", par)).Returns(Task.FromResult("[1,2,3]"));
 
             var proxy = ProxyBuilder.CreateProxy<IValueContainer<string[]>>(_executor.Object, "instance");
             proxy.UpdateValue(new[] { "1", "2", "3" });
             proxy.Value.ShouldBe(new[] { "1", "2", "3" });
 
-            _executor.Verify(x => x.Execute("UpdateValue?instanceId=instance&value=[1,2,3]"), Times.Once());
-            _executor.Verify(x => x.Execute("Value?instanceId=instance"), Times.Once());
+            _executor.Verify(x => x.Execute("UpdateValue", par2), Times.Once());
+            _executor.Verify(x => x.Execute("Value", par), Times.Once());
         }
 
         [Test]
@@ -132,29 +145,35 @@ namespace TinyWebService.Tests
         {
             TinyClient.RegisterCustomSerializer(x => Convert.ToInt64(x.TotalMilliseconds).ToString(), x => TimeSpan.FromMilliseconds(long.Parse(x)));
 
-            _executor.Setup(x => x.Execute("UpdateValue?instanceId=instance&value=300000")).Returns(Task.FromResult(string.Empty));
-            _executor.Setup(x => x.Execute("Value?instanceId=instance")).Returns(Task.FromResult("300000"));
+            var par = new Dictionary<string, string> { { "~i", "instance" } };
+            var par2 = new Dictionary<string, string> { { "~i", "instance" }, { "value", "300000" } };
+
+            _executor.Setup(x => x.Execute("UpdateValue", par2)).Returns(Task.FromResult(string.Empty));
+            _executor.Setup(x => x.Execute("Value", par)).Returns(Task.FromResult("300000"));
 
             var proxy = ProxyBuilder.CreateProxy<IValueContainer<TimeSpan>>(_executor.Object, "instance");
             proxy.UpdateValue(TimeSpan.FromMinutes(5));
             proxy.Value.ShouldBe(TimeSpan.FromMinutes(5));
 
-            _executor.Verify(x => x.Execute("UpdateValue?instanceId=instance&value=300000"), Times.Once());
-            _executor.Verify(x => x.Execute("Value?instanceId=instance"), Times.Once());
+            _executor.Verify(x => x.Execute("UpdateValue", par2), Times.Once());
+            _executor.Verify(x => x.Execute("Value", par), Times.Once());
         }
 
         [Test]
         public void ShouldSerializeEnums()
         {
-            _executor.Setup(x => x.Execute("UpdateValue?instanceId=instance&value=InvariantCulture")).Returns(Task.FromResult(string.Empty));
-            _executor.Setup(x => x.Execute("Value?instanceId=instance")).Returns(Task.FromResult("InvariantCulture"));
+            var par = new Dictionary<string, string> { { "~i", "instance" } };
+            var par2 = new Dictionary<string, string> { { "~i", "instance" }, { "value", "InvariantCulture" } };
+
+            _executor.Setup(x => x.Execute("UpdateValue", par2)).Returns(Task.FromResult(string.Empty));
+            _executor.Setup(x => x.Execute("Value", par)).Returns(Task.FromResult("InvariantCulture"));
 
             var proxy = ProxyBuilder.CreateProxy<IValueContainer<StringComparison>>(_executor.Object, "instance");
             proxy.UpdateValue(StringComparison.InvariantCulture);
             proxy.Value.ShouldBe(StringComparison.InvariantCulture);
 
-            _executor.Verify(x => x.Execute("UpdateValue?instanceId=instance&value=InvariantCulture"), Times.Once());
-            _executor.Verify(x => x.Execute("Value?instanceId=instance"), Times.Once());
+            _executor.Verify(x => x.Execute("UpdateValue", par2), Times.Once());
+            _executor.Verify(x => x.Execute("Value", par), Times.Once());
         }
 
         public class CustomProxyFactory

@@ -1,6 +1,9 @@
-﻿using System.Text;
+﻿using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
 using TinyWebService.Protocol;
+using TinyWebService.Service;
 
 namespace TinyWebService.Client
 {
@@ -17,14 +20,14 @@ namespace TinyWebService.Client
             _instanceId = instanceId;
         }
 
-        protected Task ExecuteQuery(string subPath, StringBuilder query)
+        protected Task ExecuteQuery(string subPath, IDictionary<string, string> parameters)
         {
-            return _executor.Execute(_pathPrefix + subPath + query);
+            return _executor.Execute(_pathPrefix + subPath, parameters);
         }
 
-        protected async Task<T> ExecuteQueryRet<T>(string subPath, StringBuilder query)
+        protected async Task<T> ExecuteQueryRet<T>(string subPath, IDictionary<string, string> parameters)
         {
-            return TinyProtocol.Serializer<T>.Deserialize(await _executor.Execute(_pathPrefix + subPath + query));
+            return TinyProtocol.Serializer<T>.Deserialize(await _executor.Execute(_pathPrefix + subPath, parameters));
         }
 
         protected T CreateMemberProxy<T>(string subPath)
@@ -33,10 +36,10 @@ namespace TinyWebService.Client
             return ProxyBuilder.CreateProxy<T>(_executor, _instanceId, _pathPrefix + subPath);
         }
 
-        protected async Task<T> CreateDetachedProxy<T>(string subPath, StringBuilder query)
+        protected async Task<T> CreateDetachedProxy<T>(string subPath, IDictionary<string, string> query)
             where T : class
         {
-            var instanceId = await _executor.Execute(_pathPrefix + subPath + query);
+            var instanceId = await _executor.Execute(_pathPrefix + subPath, query);
             if (string.IsNullOrEmpty(instanceId))
             {
                 return null;
@@ -45,22 +48,20 @@ namespace TinyWebService.Client
             return ProxyBuilder.CreateProxy<T>(_executor, instanceId);
         }
 
-        protected StringBuilder CreateQueryBuilder()
+        protected IDictionary<string, string> CreateQueryBuilder()
         {
-            var sb = new StringBuilder();
+            var dict = new Dictionary<string, string>();
             if (!string.IsNullOrEmpty(_instanceId))
             {
-                AppendParameter(sb, TinyProtocol.InstanceIdParameterName, _instanceId);
+                dict[TinyProtocol.InstanceIdParameterName] = _instanceId;
             }
-            return sb;
+            return dict;
         }
 
-        protected void AppendParameter(StringBuilder sb, string parameterName, string parameterValue)
+        protected string RegisterCallbackInstance<T>(T instance)
+            where T : class
         {
-            sb.Append(sb.Length == 0 ? '?' : '&');
-            sb.Append(parameterName);
-            sb.Append('=');
-            sb.Append(parameterValue);
+            return _executor.RegisterCallbackInstance(new SimpleDispatcher<T>(instance));
         }
     }
 }

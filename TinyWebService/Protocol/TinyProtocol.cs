@@ -5,20 +5,37 @@ using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text;
 using TinyWebService.Reflection;
 
 namespace TinyWebService.Protocol
 {
     internal static class TinyProtocol
     {
-        public const string InstanceIdParameterName = "instanceId";
-        public const string MetadataPath = "_metadata";
+        public const string InstanceIdParameterName = "~i";
+        public const string CallbackIdParameterName = "~c";
+        public const string MetadataPath = "~meta";
 
         private static readonly IDictionary<Type, object> ExistingSerializers = new Dictionary<Type, object>();
-        
+
+        public static string CreatePrefix(string hostname, int port, string name)
+        {
+            return string.Format("http://{0}:{1}/{2}/", hostname ?? "localhost", port, name);
+        }
+
+        public static string CreatePrefixFromEndpoint(string endpoint)
+        {
+            return "http://" + endpoint;
+        }
+
+        public static string CreateEndpoint(string hostname, int port)
+        {
+            return string.Format("{0}:{1}/{2}/", hostname ?? "localhost" , port, Guid.NewGuid().ToString("N"));
+        }
+
         public static bool IsSerializableType(Type type)
         {
-            if (type.IsPrimitive || type == typeof (string) || type == typeof (void) || type.IsEnum || ExistingSerializers.ContainsKey(type))
+            if (type.IsPrimitive || type == typeof(string) || type == typeof(void) || type.IsEnum || ExistingSerializers.ContainsKey(type))
             {
                 return true;
             }

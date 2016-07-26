@@ -1,4 +1,5 @@
 ﻿using System;
+using TinyWebService.Protocol;
 using TinyWebService.Service;
 using TinyWebService.Utilities;
 
@@ -10,8 +11,8 @@ namespace TinyWebService
             where T : class
         {
             var actualOptions = options ?? new TinyServiceOptions();
-            var session = new Session(new SimpleDispatcher<T>(service), new SimpleTimer(actualOptions.CleanupInterval));
-            return new TinyHttpServer(TinyHttpServer.CreatePrefix(actualOptions.AllowExternalConnections ? "*" : null, actualOptions.Port, name), session);
+            var session = new Session(new SimpleTimer(actualOptions.CleanupInterval), new SimpleDispatcher<T>(service));
+            return new TinyHttpServer(TinyProtocol.CreatePrefix(actualOptions.AllowExternalConnections ? "*" : null, actualOptions.Port, name), session);
         }
     }
 }

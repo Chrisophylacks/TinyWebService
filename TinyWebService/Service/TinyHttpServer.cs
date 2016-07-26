@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Net;
 using System.Text;
 using System.Web;
@@ -8,11 +9,6 @@ namespace TinyWebService.Service
     internal sealed class TinyHttpServer : IDisposable
     {
         private readonly Session _session;
-
-        internal static string CreatePrefix(string hostname, int port, string name)
-        {
-            return string.Format("http://{0}:{1}/{2}/", hostname ?? "localhost", port, name);
-        }
 
         private readonly HttpListener _listener;
         private bool _isDisposed;
@@ -52,7 +48,9 @@ namespace TinyWebService.Service
             string response;
             try
             {
-                response = await _session.Execute(HttpUtility.UrlDecode(context.Request.Url.AbsolutePath), HttpUtility.UrlDecode(context.Request.Url.Query));
+                var path = HttpUtility.UrlDecode(context.Request.Url.AbsolutePath);
+                var query = context.Request.HttpMethod == "GET" ? context.Request.Url.Query : new StreamReader(context.Request.InputStream).ReadToEnd();
+                response = await _session.Execute(path, HttpUtility.UrlDecode(query));
             }
             catch (Exception ex)
             {
