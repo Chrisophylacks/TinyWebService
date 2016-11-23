@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using TinyWebService.Client;
 using TinyWebService.Protocol;
 
 namespace TinyWebService.Service
@@ -24,13 +25,36 @@ namespace TinyWebService.Service
         public static Task<object> WrapInstance<TInstance>(TInstance instance)
             where TInstance : class
         {
+            var proxy = instance as ProxyBase;
+            if (instance == null)
+            {
+                return null;
+            }
+
+            if (proxy != null)
+            {
+                return Task.FromResult<object>(proxy.GetExternalAddress());
+            }
+
             return Task.FromResult<object>(new SimpleDispatcher<TInstance>(instance));
         }
 
         public static async Task<object> WrapInstanceAsync<TInstance>(Task<TInstance> task)
             where TInstance : class
         {
-            return new SimpleDispatcher<TInstance>(await task.ConfigureAwait(false));
+            var instance = await task.ConfigureAwait(false);
+            if (instance == null)
+            {
+                return null;
+            }
+
+            var proxy = instance as ProxyBase;
+            if (proxy != null)
+            {
+                return Task.FromResult<object>(proxy.GetExternalAddress());
+            }
+
+            return new SimpleDispatcher<TInstance>(instance);
         }
     }
 }

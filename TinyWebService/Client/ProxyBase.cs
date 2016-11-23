@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,6 +19,11 @@ namespace TinyWebService.Client
             _pathPrefix = string.IsNullOrEmpty(path) ? string.Empty : path + "/";
             _executor = executor;
             _instanceId = instanceId;
+        }
+
+        public string GetExternalAddress()
+        {
+            return _executor.GetExternalAddress(_pathPrefix);
         }
 
         protected Task ExecuteQuery(string subPath, IDictionary<string, string> parameters)

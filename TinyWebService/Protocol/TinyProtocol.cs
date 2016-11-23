@@ -2,9 +2,12 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Json;
 using System.Text;
 using TinyWebService.Reflection;
 
@@ -36,6 +39,11 @@ namespace TinyWebService.Protocol
         public static bool IsSerializableType(Type type)
         {
             if (type.IsPrimitive || type == typeof(string) || type == typeof(void) || type.IsEnum || ExistingSerializers.ContainsKey(type))
+            {
+                return true;
+            }
+
+            if (type.IsClass && type.IsDefined(typeof (DataContractAttribute)))
             {
                 return true;
             }
@@ -127,6 +135,11 @@ namespace TinyWebService.Protocol
                     return Expression.Call(value, value.Type.GetMethod("ToString", Type.EmptyTypes));
                 }
 
+                if (value.Type.IsClass && value.Type.IsDefined(typeof(DataContractAttribute)))
+                {
+                    return Expression.Call(typeof(Serializer<T>).GetMethod("SerializeClass", BindingFlags.NonPublic | BindingFlags.Static), value);
+                }
+
                 var itemType = value.Type.TryGetCollectionItemType();
                 if (itemType != null)
                 {
@@ -168,6 +181,11 @@ namespace TinyWebService.Protocol
                         targetType);
                 }
 
+                if (targetType.IsClass && targetType.IsDefined(typeof (DataContractAttribute)))
+                {
+                    return Expression.Call(typeof (Serializer<T>).GetMethod("DeserializeClass", BindingFlags.NonPublic | BindingFlags.Static), value);
+                }
+
                 var itemType = targetType.TryGetCollectionItemType();
                 if (itemType != null)
                 {
@@ -190,6 +208,25 @@ namespace TinyWebService.Protocol
             private static IList<T> DeserializeCollection(string value)
             {
                 return value.Substring(1, value.Length - 2).Split(',').Select(Instance._deserialize).ToList();
+            }
+
+            private static string SerializeClass(T instance)
+            {
+                using (var stream = new MemoryStream())
+                {
+                    new DataContractJsonSerializer(typeof (T)).WriteObject(stream, instance);
+                    var size = (int)stream.Position;
+                    stream.Seek(0, SeekOrigin.Begin);
+                    return Encoding.UTF8.GetString(stream.GetBuffer(), 0, size);
+                }
+            }
+
+            private static T DeserializeClass(string value)
+            {
+                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(value)))
+                {
+                    return (T)new DataContractJsonSerializer(typeof(T)).ReadObject(stream);
+                }
             }
         }
     }

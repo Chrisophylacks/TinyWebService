@@ -42,6 +42,12 @@ namespace TinyWebService
             TinyProtocol.Serializer<TValue>.RegisterCustom(serialize, deserialize);
         }
 
+        public static string GetExternalAddress<T>(T proxyObject)
+        {
+            var proxy = proxyObject as ProxyBase;
+            return proxy?.GetExternalAddress();
+        }
+
         internal static T CreateCallbackProxy<T>(string encodedAddress)
             where T : class
         {

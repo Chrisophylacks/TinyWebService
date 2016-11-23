@@ -176,6 +176,32 @@ namespace TinyWebService.Tests
             _executor.Verify(x => x.Execute("Value", par), Times.Once());
         }
 
+        [Test]
+        public void ShouldSerializeDataObjects()
+        {
+            const string serializedString = @"{""Key"":""a"",""Nested"":{""Key"":""b"",""Nested"":null}}";
+            var par = new Dictionary<string, string> { { "~i", "instance" } };
+            var par2 = new Dictionary<string, string> { { "~i", "instance" }, { "value", serializedString } };
+
+            _executor.Setup(x => x.Execute("UpdateValue", par2)).Returns(Task.FromResult(string.Empty));
+            _executor.Setup(x => x.Execute("Value", par)).Returns(Task.FromResult(serializedString));
+
+            var proxy = ProxyBuilder.CreateProxy<IValueContainer<DataObject>>(_executor.Object, "instance");
+            proxy.UpdateValue(new DataObject
+            {
+                Key= "a",
+                Nested = new DataObject { Key = "b" }
+            });
+
+            var value = proxy.Value;
+            value.Key.ShouldBe("a");
+            value.Nested.Key.ShouldBe("b");
+            value.Nested.Nested.ShouldBe(null);
+
+            _executor.Verify(x => x.Execute("UpdateValue", par2), Times.Once());
+            _executor.Verify(x => x.Execute("Value", par), Times.Once());
+        }
+
         public class CustomProxyFactory
         {
             public static DynamicValue<T> CreateProxy<T>(IDynamicValueProxy<T> proxy)

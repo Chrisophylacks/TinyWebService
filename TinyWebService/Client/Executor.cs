@@ -26,6 +26,11 @@ namespace TinyWebService.Client
             Timeout = TimeSpan.FromSeconds(30);
         }
 
+        public string GetExternalAddress(string path)
+        {
+            return _prefix + path;
+        }
+
         public string RegisterCallbackInstance(ISimpleDispatcher dispatcher)
         {
             if (_callbackEndpoint == null)
