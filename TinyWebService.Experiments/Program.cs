@@ -45,6 +45,22 @@ namespace TinyWebService.Experiments
     {
         static void Main(string[] args)
         {
+            TestCallbacks();
+            Console.ReadLine();
+        }
+
+        static void TestProbing()
+        {
+            try
+            {
+                TinyClient.Create<IServer>("test");
+            }
+            catch (TinyWebServiceException)
+            {
+            }
+        }
+        static void TestCallbacks()
+        {
             TinyClient.EnableDuplexMode();
 
             using (TinyService.Run(new Server(), "test", new TinyServiceOptions()))
@@ -55,8 +71,6 @@ namespace TinyWebService.Experiments
                 client.Register(new Callback());
                 client.Raise("y");
             }
-
-            Console.ReadLine();
         }
     }
 }

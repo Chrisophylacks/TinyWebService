@@ -60,13 +60,9 @@ namespace TinyWebService.Client
         {
             try
             {
-                using (var client = new HttpClient())
+                using (var response = await ExecuteInternal(path, parameters))
                 {
-                    client.Timeout = Timeout;
-                    using (var response = await Execute(client, path, parameters))
-                    {
-                        return await response.Content.ReadAsStringAsync();
-                    }
+                    return ReadStream(response.GetResponseStream());
                 }
             }
             catch (WebException ex)
@@ -76,18 +72,27 @@ namespace TinyWebService.Client
                     throw new TinyWebServiceException("Remote host not found");
                 }
 
-                throw new TinyWebServiceException("Remote error: " + ReadStream(ex.Response.GetResponseStream()) , ex);
+                throw new TinyWebServiceException("Remote error: " + ReadStream(ex.Response.GetResponseStream()), ex);
             }
         }
 
-        private Task<HttpResponseMessage> Execute(HttpClient client, string path, IDictionary<string, string> parameters = null)
+        private async Task<WebResponse> ExecuteInternal(string path, IDictionary<string, string> parameters = null)
         {
+            var request = WebRequest.CreateHttp(new Uri(_prefix + path));
+            request.Timeout = (int)Timeout.TotalMilliseconds;
+
             if (parameters == null || parameters.Count == 0)
             {
-                return client.GetAsync(_prefix + path);
+                request.Method = WebRequestMethods.Http.Get;
+            }
+            else
+            {
+                request.Method = WebRequestMethods.Http.Post;
+                var content = new FormUrlEncodedContent(parameters);
+                await content.CopyToAsync(request.GetRequestStream());
             }
 
-            return client.PostAsync(_prefix + path, new FormUrlEncodedContent(parameters));
+            return await request.GetResponseAsync();
         }
 
         private string ReadStream(Stream stream)
