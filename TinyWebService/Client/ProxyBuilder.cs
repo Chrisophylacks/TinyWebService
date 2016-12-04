@@ -5,10 +5,8 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Text;
 using TinyWebService.Protocol;
 using TinyWebService.Reflection;
-using System.Threading.Tasks;
 
 namespace TinyWebService.Client
 {

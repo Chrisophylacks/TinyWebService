@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Text;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using TinyWebService.Protocol;
 using TinyWebService.Service;
@@ -23,7 +20,7 @@ namespace TinyWebService.Client
 
         public string GetExternalAddress()
         {
-            return _executor.GetExternalAddress(_pathPrefix);
+            return new ObjectAddress(_executor.GetExternalAddress(_pathPrefix), _instanceId).Encode();
         }
 
         protected Task ExecuteQuery(string subPath, IDictionary<string, string> parameters)
@@ -45,13 +42,8 @@ namespace TinyWebService.Client
         protected async Task<T> CreateDetachedProxy<T>(string subPath, IDictionary<string, string> query)
             where T : class
         {
-            var instanceId = await _executor.Execute(_pathPrefix + subPath, query);
-            if (string.IsNullOrEmpty(instanceId))
-            {
-                return null;
-            }
-
-            return ProxyBuilder.CreateProxy<T>(_executor, instanceId);
+            var address = await _executor.Execute(_pathPrefix + subPath, query);
+            return TinyClient.CreateProxyFromAddress<T>(address);
         }
 
         protected IDictionary<string, string> CreateQueryBuilder()
@@ -67,7 +59,7 @@ namespace TinyWebService.Client
         protected string RegisterCallbackInstance<T>(T instance)
             where T : class
         {
-            return _executor.RegisterCallbackInstance(new SimpleDispatcher<T>(instance));
+            return Endpoint.RegisterCallbackInstance(new SimpleDispatcher<T>(instance));
         }
     }
 }

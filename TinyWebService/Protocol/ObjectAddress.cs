@@ -1,8 +1,8 @@
 namespace TinyWebService.Protocol
 {
-    internal sealed class CallbackObjectAddress
+    internal sealed class ObjectAddress
     {
-        public CallbackObjectAddress(string endpoint, string instanceId)
+        public ObjectAddress(string endpoint, string instanceId)
         {
             Endpoint = endpoint;
             InstanceId = instanceId;
@@ -12,10 +12,14 @@ namespace TinyWebService.Protocol
 
         public string InstanceId { get; }
 
-        public static CallbackObjectAddress Parse(string encodedAddress)
+        public static ObjectAddress Parse(string encodedAddress)
         {
             var terms = encodedAddress.Split('~');
-            return new CallbackObjectAddress(terms[0], terms[1]);
+            if (terms.Length == 1)
+            {
+                return new ObjectAddress(terms[0], null);
+            }
+            return new ObjectAddress(terms[0], terms[1]);
         }
 
         public string Encode()

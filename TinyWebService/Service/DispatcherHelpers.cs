@@ -25,12 +25,12 @@ namespace TinyWebService.Service
         public static Task<object> WrapInstance<TInstance>(TInstance instance)
             where TInstance : class
         {
-            var proxy = instance as ProxyBase;
             if (instance == null)
             {
-                return null;
+                return Task.FromResult<object>(null);
             }
 
+            var proxy = instance as ProxyBase;
             if (proxy != null)
             {
                 return Task.FromResult<object>(proxy.GetExternalAddress());
@@ -51,7 +51,7 @@ namespace TinyWebService.Service
             var proxy = instance as ProxyBase;
             if (proxy != null)
             {
-                return Task.FromResult<object>(proxy.GetExternalAddress());
+                return proxy.GetExternalAddress();
             }
 
             return new SimpleDispatcher<TInstance>(instance);

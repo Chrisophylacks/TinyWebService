@@ -171,7 +171,7 @@ namespace TinyWebService.Service
 
             if (TinyProtocol.IsRemotableType(parameterType))
             {
-                return Expression.Call(typeof (TinyClient).GetMethod("CreateCallbackProxy", BindingFlags.Static | BindingFlags.NonPublic).MakeGenericMethod(parameterType), parameter);
+                return Expression.Call(typeof (TinyClient).GetMethod("CreateProxyFromAddress", BindingFlags.Static | BindingFlags.NonPublic).MakeGenericMethod(parameterType), parameter);
             }
 
             throw new InvalidOperationException(string.Format("Unsupported parameter type '{0}'", parameterType));

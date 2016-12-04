@@ -28,7 +28,7 @@ namespace TinyWebService
 
         public static void EnableDuplexMode(TinyServiceOptions options = null)
         {
-            Executor.EnableDuplexMode(options ?? new TinyServiceOptions { Port = TinyServiceOptions.DefaultCallbackPort });
+            Endpoint.EnableDuplexMode(options ?? new TinyServiceOptions { Port = TinyServiceOptions.DefaultCallbackPort });
         }
 
         public static void RegisterCustomProxyFactory<TProxyFactory>()
@@ -48,11 +48,16 @@ namespace TinyWebService
             return proxy?.GetExternalAddress();
         }
 
-        internal static T CreateCallbackProxy<T>(string encodedAddress)
+        internal static T CreateProxyFromAddress<T>(string encodedAddress)
             where T : class
         {
-            var address = CallbackObjectAddress.Parse(encodedAddress);
-            var executor = new Executor(TinyProtocol.CreatePrefixFromEndpoint(address.Endpoint));
+            if (string.IsNullOrEmpty(encodedAddress))
+            {
+                return null;
+            }
+
+            var address = ObjectAddress.Parse(encodedAddress);
+            var executor = Endpoint.GetExecutor(address.Endpoint);
             return ProxyBuilder.CreateProxy<T>(executor, address.InstanceId);
         }
     }

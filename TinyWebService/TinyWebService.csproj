@@ -43,12 +43,13 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Client\Endpoint.cs" />
     <Compile Include="Client\Executor.cs" />
     <Compile Include="Client\IExecutor.cs" />
     <Compile Include="Client\ProxyBase.cs" />
     <Compile Include="Client\ProxyBuilder.cs" />
     <Compile Include="ITinyClient.cs" />
-    <Compile Include="Protocol\CallbackObjectAddress.cs" />
+    <Compile Include="Protocol\ObjectAddress.cs" />
     <Compile Include="Protocol\TinyProtocol.cs" />
     <Compile Include="Reflection\ExpressionConstructorBuilder.cs" />
     <Compile Include="Reflection\ExpressionMethodBuilder.cs" />

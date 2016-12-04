@@ -26,16 +26,6 @@ namespace TinyWebService.Protocol
             return string.Format("http://{0}:{1}/{2}/", hostname ?? "localhost", port, name);
         }
 
-        public static string CreatePrefixFromEndpoint(string endpoint)
-        {
-            return "http://" + endpoint;
-        }
-
-        public static string CreateEndpoint(string hostname, int port)
-        {
-            return string.Format("{0}:{1}/{2}/", hostname ?? "localhost" , port, Guid.NewGuid().ToString("N"));
-        }
-
         public static bool IsSerializableType(Type type)
         {
             if (type.IsPrimitive || type == typeof(string) || type == typeof(void) || type.IsEnum || ExistingSerializers.ContainsKey(type))
