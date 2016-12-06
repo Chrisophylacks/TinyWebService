@@ -30,7 +30,7 @@ namespace TinyWebService.Client
 
         protected async Task<T> ExecuteQueryRet<T>(string subPath, IDictionary<string, string> parameters)
         {
-            return TinyProtocol.Serializer<T>.Deserialize(await _executor.Execute(_pathPrefix + subPath, parameters));
+            return TinyProtocol.Serializer<T>.Deserialize(await _executor.Execute(_pathPrefix + subPath, parameters).ConfigureAwait(false));
         }
 
         protected T CreateMemberProxy<T>(string subPath)
@@ -42,7 +42,7 @@ namespace TinyWebService.Client
         protected async Task<T> CreateDetachedProxy<T>(string subPath, IDictionary<string, string> query)
             where T : class
         {
-            var address = await _executor.Execute(_pathPrefix + subPath, query);
+            var address = await _executor.Execute(_pathPrefix + subPath, query).ConfigureAwait(false);
             return TinyClient.CreateProxyFromAddress<T>(address);
         }
 

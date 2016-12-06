@@ -28,7 +28,7 @@ namespace TinyWebService.Client
         {
             try
             {
-                using (var response = await ExecuteInternal(path, parameters))
+                using (var response = await ExecuteInternal(path, parameters).ConfigureAwait(false))
                 {
                     return ReadStream(response.GetResponseStream());
                 }
@@ -57,10 +57,10 @@ namespace TinyWebService.Client
             {
                 request.Method = WebRequestMethods.Http.Post;
                 var content = new FormUrlEncodedContent(parameters);
-                await content.CopyToAsync(request.GetRequestStream());
+                await content.CopyToAsync(request.GetRequestStream()).ConfigureAwait(false);
             }
 
-            return await request.GetResponseAsync();
+            return await request.GetResponseAsync().ConfigureAwait(false);
         }
 
         private string ReadStream(Stream stream)

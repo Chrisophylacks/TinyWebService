@@ -58,7 +58,7 @@ namespace TinyWebService.Service
                 response = ex.ToString();
             }
 
-            var responseBuffer = Encoding.UTF8.GetBytes(response);
+            var responseBuffer = Encoding.UTF8.GetBytes(response ?? String.Empty);
             context.Response.OutputStream.Write(responseBuffer, 0, responseBuffer.Length);
             context.Response.OutputStream.Close();
         }
