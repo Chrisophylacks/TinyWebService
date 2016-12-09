@@ -19,7 +19,8 @@ namespace TinyWebService
             }
             catch (AggregateException ex)
             {
-                ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
+                throw ex.GetBaseException();
+                //ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
             }
 
             executor.Timeout = TimeSpan.FromSeconds(30);

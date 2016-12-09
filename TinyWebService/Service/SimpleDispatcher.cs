@@ -37,18 +37,21 @@ namespace TinyWebService.Service
             }
 
             var tcs = new TaskCompletionSource<object>();
-            _dispatcher.BeginInvoke(new Action(async () =>
+            _dispatcher.BeginInvoke(new Action(() =>
             {
-                try
+                ExecuteInternal(path, parameters).ContinueWith(x =>
                 {
-                    var obj = await ExecuteInternal(path, parameters);
-                    (obj as ISimpleDispatcher)?.SetDispatcherIfNotPresent(_dispatcher);
-                    tcs.SetResult(obj);
-                }
-                catch (Exception ex)
-                {
-                    tcs.SetException(ex);
-                }
+                    try
+                    {
+                        var obj = x.Result;
+                        (obj as ISimpleDispatcher)?.SetDispatcherIfNotPresent(_dispatcher);
+                        tcs.SetResult(obj);
+                    }
+                    catch (Exception ex)
+                    {
+                        tcs.SetException(ex);
+                    }
+                });
             }));
 
             return tcs.Task;

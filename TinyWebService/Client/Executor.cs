@@ -2,13 +2,15 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
-using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace TinyWebService.Client
 {
     internal sealed class Executor : IExecutor
     {
+        private static readonly Encoding DefaultHttpEncoding = Encoding.GetEncoding(28591);
+
         private readonly string _prefix;
 
         public Executor(string prefix)
@@ -24,30 +26,44 @@ namespace TinyWebService.Client
 
         public TimeSpan Timeout { get; set; }
 
-        public async Task<string> Execute(string path, IDictionary<string, string> parameters = null)
+        public Task<string> Execute(string path, IDictionary<string, string> parameters = null)
         {
-            try
+            return ExecuteInternal(path, parameters).ContinueWith<string>(x =>
             {
-                using (var response = await ExecuteInternal(path, parameters).ConfigureAwait(false))
+                try
                 {
-                    return ReadStream(response.GetResponseStream());
+                    using (var response = x.Result)
+                    {
+                        return ReadStream(response.GetResponseStream());
+                    }
                 }
-            }
-            catch (WebException ex)
+                catch (Exception ex)
+                {
+                    HandleExecutionException(ex);
+                    throw;
+                }
+            });
+        }
+
+        private void HandleExecutionException(Exception ex)
+        {
+            var webException = ex as WebException ?? (ex.GetBaseException() as WebException);
+            if (webException != null)
             {
-                if (ex.Response == null)
+                if (webException.Response == null)
                 {
                     throw new TinyWebServiceException("Remote host not found");
                 }
 
-                throw new TinyWebServiceException("Remote error: " + ReadStream(ex.Response.GetResponseStream()), ex);
+                throw new TinyWebServiceException("Remote error: " + ReadStream(webException.Response.GetResponseStream()), ex);
             }
         }
 
-        private async Task<WebResponse> ExecuteInternal(string path, IDictionary<string, string> parameters = null)
+        private Task<WebResponse> ExecuteInternal(string path, IDictionary<string, string> parameters = null)
         {
-            var request = WebRequest.CreateHttp(new Uri(_prefix + path));
+            var request = (HttpWebRequest)WebRequest.Create(new Uri(_prefix + path));
             request.Timeout = (int)Timeout.TotalMilliseconds;
+            Task current = null;
 
             if (parameters == null || parameters.Count == 0)
             {
@@ -56,11 +72,11 @@ namespace TinyWebService.Client
             else
             {
                 request.Method = WebRequestMethods.Http.Post;
-                var content = new FormUrlEncodedContent(parameters);
-                await content.CopyToAsync(request.GetRequestStream()).ConfigureAwait(false);
+                var content = GetContentByteArray(parameters);
+                request.GetRequestStream().Write(content, 0, content.Length);
             }
 
-            return await request.GetResponseAsync().ConfigureAwait(false);
+            return Task.Factory.FromAsync<WebResponse>(request.BeginGetResponse, request.EndGetResponse, null, TaskCreationOptions.None);
         }
 
         private string ReadStream(Stream stream)
@@ -69,6 +85,29 @@ namespace TinyWebService.Client
             {
                 return sr.ReadToEnd();
             }
+        }
+
+        private static byte[] GetContentByteArray(IEnumerable<KeyValuePair<string, string>> nameValueCollection)
+        {
+            if (nameValueCollection == null)
+                throw new ArgumentNullException("nameValueCollection");
+            StringBuilder stringBuilder = new StringBuilder();
+            foreach (KeyValuePair<string, string> keyValuePair in nameValueCollection)
+            {
+                if (stringBuilder.Length > 0)
+                    stringBuilder.Append('&');
+                stringBuilder.Append(Encode(keyValuePair.Key));
+                stringBuilder.Append('=');
+                stringBuilder.Append(Encode(keyValuePair.Value));
+            }
+            return DefaultHttpEncoding.GetBytes(stringBuilder.ToString());
+        }
+
+        private static string Encode(string data)
+        {
+            if (string.IsNullOrEmpty(data))
+                return string.Empty;
+            return Uri.EscapeDataString(data).Replace("%20", "+");
         }
     }
 }

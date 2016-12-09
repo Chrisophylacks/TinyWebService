@@ -60,8 +60,8 @@ namespace TinyWebService.Experiments
             var service = MultiService.Create(0);
             var s3 = service.Get(3);
 
-            service.Print("message0");
-            s3.Print("message3");
+            service.Print("message 0");
+            s3.Print("message 3");
         }
     }
 }

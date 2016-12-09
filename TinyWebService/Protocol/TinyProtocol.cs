@@ -33,7 +33,7 @@ namespace TinyWebService.Protocol
                 return true;
             }
 
-            if (type.IsClass && type.IsDefined(typeof (DataContractAttribute)))
+            if (type.IsClass && type.IsDefined(typeof (DataContractAttribute), true))
             {
                 return true;
             }
@@ -125,7 +125,7 @@ namespace TinyWebService.Protocol
                     return Expression.Call(value, value.Type.GetMethod("ToString", Type.EmptyTypes));
                 }
 
-                if (value.Type.IsClass && value.Type.IsDefined(typeof(DataContractAttribute)))
+                if (value.Type.IsClass && value.Type.IsDefined(typeof(DataContractAttribute), true))
                 {
                     return Expression.Call(typeof(Serializer<T>).GetMethod("SerializeClass", BindingFlags.NonPublic | BindingFlags.Static), value);
                 }
@@ -171,7 +171,7 @@ namespace TinyWebService.Protocol
                         targetType);
                 }
 
-                if (targetType.IsClass && targetType.IsDefined(typeof (DataContractAttribute)))
+                if (targetType.IsClass && targetType.IsDefined(typeof (DataContractAttribute), true))
                 {
                     return Expression.Call(typeof (Serializer<T>).GetMethod("DeserializeClass", BindingFlags.NonPublic | BindingFlags.Static), value);
                 }

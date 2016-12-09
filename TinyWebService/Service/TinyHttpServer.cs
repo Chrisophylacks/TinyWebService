@@ -2,6 +2,7 @@
 using System.IO;
 using System.Net;
 using System.Text;
+using System.Threading.Tasks;
 using System.Web;
 
 namespace TinyWebService.Service
@@ -29,38 +30,48 @@ namespace TinyWebService.Service
             _listener.Stop();
         }
 
-        private async void Run()
+        private void Run()
         {
-            while (!_isDisposed)
+            if (!_isDisposed)
             {
-                try
+                Task.Factory.FromAsync<HttpListenerContext>(_listener.BeginGetContext, _listener.EndGetContext, null, TaskCreationOptions.None).ContinueWith(x =>
                 {
-                    HandleRespose(await _listener.GetContextAsync().ConfigureAwait(false));
-                }
-                catch (HttpListenerException)
-                {
-                }
+                    try
+                    {
+                        HandleRespose(x.Result);
+                    }
+                    catch (HttpListenerException)
+                    {
+                    }
+
+                    Run();
+                }, TaskContinuationOptions.ExecuteSynchronously);
             }
         }
 
-        private async void HandleRespose(HttpListenerContext context)
+        private void HandleRespose(HttpListenerContext context)
         {
-            string response;
-            try
-            {
-                var path = HttpUtility.UrlDecode(context.Request.Url.AbsolutePath);
-                var query = context.Request.HttpMethod == "GET" ? context.Request.Url.Query : new StreamReader(context.Request.InputStream).ReadToEnd();
-                response = await _session.Execute(path, HttpUtility.UrlDecode(query));
-            }
-            catch (Exception ex)
-            {
-                context.Response.StatusCode = 500;
-                response = ex.ToString();
-            }
+            var path = HttpUtility.UrlDecode(context.Request.Url.AbsolutePath);
+            var query = context.Request.HttpMethod == "GET" ? context.Request.Url.Query : new StreamReader(context.Request.InputStream).ReadToEnd();
 
-            var responseBuffer = Encoding.UTF8.GetBytes(response ?? String.Empty);
-            context.Response.OutputStream.Write(responseBuffer, 0, responseBuffer.Length);
-            context.Response.OutputStream.Close();
+            _session.Execute(path, HttpUtility.UrlDecode(query)).ContinueWith(x =>
+            {
+                string response;
+                try
+                {
+                    response = x.Result;
+                }
+                catch (Exception ex)
+                {
+                    context.Response.StatusCode = 500;
+                    response = ex.ToString();
+                }
+
+                var responseBuffer = Encoding.UTF8.GetBytes(response ?? String.Empty);
+                context.Response.OutputStream.Write(responseBuffer, 0, responseBuffer.Length);
+                context.Response.OutputStream.Close();
+            }, TaskContinuationOptions.ExecuteSynchronously);
+
         }
     }
 }

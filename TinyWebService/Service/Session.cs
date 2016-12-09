@@ -54,14 +54,14 @@ namespace TinyWebService.Service
             _cleanupOperationId = Interlocked.Read(ref _currentOperationId);
         }
 
-        public async Task<string> Execute(string absolutePath, string query)
+        public Task<string> Execute(string absolutePath, string query)
         {
             var index = absolutePath.IndexOf("/", 1);
             var path = absolutePath.Substring(index + 1);
 
             if (path == TinyProtocol.MetadataPath)
             {
-                return "<meta/>";
+                return Tasks.FromResult("<meta/>");
             }
 
             var parameters = ParseQuery(query);
@@ -81,15 +81,17 @@ namespace TinyWebService.Service
                 throw new InvalidOperationException("Callback operation must specify instanceId");
             }
 
-            var result = await dispatcher.Execute(path, parameters);
-
-            var newInstance = result as ISimpleDispatcher;
-            if (newInstance != null)
+            return dispatcher.Execute(path, parameters).ContinueWith<string>(x =>
             {
-                return new ObjectAddress(_prefix, RegisterInstance(newInstance)).Encode();
-            }
+                var result = x.Result;
+                var newInstance = result as ISimpleDispatcher;
+                if (newInstance != null)
+                {
+                    return new ObjectAddress(_prefix, RegisterInstance(newInstance)).Encode();
+                }
 
-            return (string)result;
+                return (string) result;
+            }, TaskContinuationOptions.ExecuteSynchronously);
         }
 
         private static IDictionary<string, string> ParseQuery(string query)

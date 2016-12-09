@@ -1,3 +1,5 @@
+using System;
+
 namespace TinyWebService.Protocol
 {
     internal sealed class ObjectAddress
@@ -24,6 +26,11 @@ namespace TinyWebService.Protocol
 
         public string Encode()
         {
+            if (String.IsNullOrEmpty(InstanceId))
+            {
+                return Endpoint;
+            }
+
             return Endpoint + "~" + InstanceId;
         }
     }

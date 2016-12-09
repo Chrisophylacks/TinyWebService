@@ -8,6 +8,7 @@ namespace TinyWebService.Experiments
     {
         static void Main(string[] args)
         {
+            //TestProbing();
             MultiServiceTest.Run();
             Console.ReadLine();
         }

@@ -28,9 +28,9 @@ namespace TinyWebService.Client
             return _executor.Execute(_pathPrefix + subPath, parameters);
         }
 
-        protected async Task<T> ExecuteQueryRet<T>(string subPath, IDictionary<string, string> parameters)
+        protected Task<T> ExecuteQueryRet<T>(string subPath, IDictionary<string, string> parameters)
         {
-            return TinyProtocol.Serializer<T>.Deserialize(await _executor.Execute(_pathPrefix + subPath, parameters).ConfigureAwait(false));
+            return _executor.Execute(_pathPrefix + subPath, parameters).ContinueWith(x => TinyProtocol.Serializer<T>.Deserialize(x.Result), TaskContinuationOptions.ExecuteSynchronously);
         }
 
         protected T CreateMemberProxy<T>(string subPath)
@@ -39,11 +39,10 @@ namespace TinyWebService.Client
             return ProxyBuilder.CreateProxy<T>(_executor, _instanceId, _pathPrefix + subPath);
         }
 
-        protected async Task<T> CreateDetachedProxy<T>(string subPath, IDictionary<string, string> query)
+        protected Task<T> CreateDetachedProxy<T>(string subPath, IDictionary<string, string> query)
             where T : class
         {
-            var address = await _executor.Execute(_pathPrefix + subPath, query).ConfigureAwait(false);
-            return TinyClient.CreateProxyFromAddress<T>(address);
+            return _executor.Execute(_pathPrefix + subPath, query).ContinueWith(x => TinyClient.CreateProxyFromAddress<T>(x.Result), TaskContinuationOptions.ExecuteSynchronously);
         }
 
         protected IDictionary<string, string> CreateQueryBuilder()
