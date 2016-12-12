@@ -50,6 +50,7 @@
   <ItemGroup>
     <Compile Include="Callbacks.cs" />
     <Compile Include="MultiServer.cs" />
+    <Compile Include="Nested.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
