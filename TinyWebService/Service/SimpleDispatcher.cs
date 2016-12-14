@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using TinyWebService.Protocol;
@@ -19,13 +20,17 @@ namespace TinyWebService.Service
         private readonly T _instance;
         private Dispatcher _dispatcher;
 
-        public SimpleDispatcher(T instance)
+        public SimpleDispatcher(T instance, bool useThreadDispatcher)
         {
             _instance = instance;
             var dispatcherObject = instance as DispatcherObject;
             if (dispatcherObject != null)
             {
                 _dispatcher = dispatcherObject.Dispatcher;
+            }
+            else if (useThreadDispatcher)
+            {
+                _dispatcher = Dispatcher.FromThread(Thread.CurrentThread);
             }
         }
 
@@ -110,7 +115,9 @@ namespace TinyWebService.Service
                 }
 
                 var indexer = typeof (IDictionary<string, string>).GetProperty("Item");
-                var method = current.Type.GetTypeHierarchy().Select(x => x.GetMethod(entries[i], BindingFlags.Public | BindingFlags.Instance)).FirstOrDefault(x => x != null);
+                var method = current.Type.GetTypeHierarchy()
+                    .SelectMany(x => x.GetMethods(BindingFlags.Public | BindingFlags.Instance))
+                    .FirstOrDefault(x => x.Name == entries[i] && x.GetParameters().All(p => TinyProtocol.IsSerializableType(p.ParameterType)));
                 if (method == null)
                 {
                     current = ThrowExpression(string.Format("member '{0}' not found", entries[i]));

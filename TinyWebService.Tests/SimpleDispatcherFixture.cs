@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Moq;
 using NUnit.Framework;
 using Shouldly;
 using TinyWebService.Service;
@@ -14,7 +15,7 @@ namespace TinyWebService.Tests
         public void ShouldDispatch()
         {
             var root = new Root();
-            var dispatcher = new SimpleDispatcher<IRoot>(root);
+            var dispatcher = new SimpleDispatcher<IRoot>(root, false);
 
             dispatcher.Execute("BooleanValue/Value", new Dictionary<string, string>()).Result.ShouldBe("False");
             dispatcher.Execute("BooleanValue/UpdateValue", new Dictionary<string, string> { { "value", "True" } });
@@ -42,7 +43,7 @@ namespace TinyWebService.Tests
             using (var dt = new DispatcherThread())
             {
                 var root = dt.Invoke(() => new DispatcherRoot());
-                var dispatcher = new SimpleDispatcher<IMethodRoot>(root);
+                var dispatcher = new SimpleDispatcher<IMethodRoot>(root, false);
 
                 dispatcher.Execute("GetIntValue", new Dictionary<string, string>()).Result.ShouldBe("1");
                 dispatcher.Execute("GetIntValueAsync", new Dictionary<string, string>()).Result.ShouldBe("1");
@@ -59,9 +60,19 @@ namespace TinyWebService.Tests
         public void ShouldThrowOnInvalidPath()
         {
             var root = new Root();
-            var dispatcher = new SimpleDispatcher<IRoot>(root);
+            var dispatcher = new SimpleDispatcher<IRoot>(root, false);
 
             new Action(() => { dispatcher.Execute("IntValue/InvalidPath", new Dictionary<string, string>()); }).ShouldThrow<InvalidOperationException>();
+        }
+
+        [Test]
+        public void ShouldResolveAmbiguityByDiscardingIncompatibleMethods()
+        {
+            var service = new Mock<IAmbiguousMethodsService>();
+            var dispatcher = new SimpleDispatcher<IAmbiguousMethodsService>(service.Object, false);
+
+            dispatcher.Execute("Execute", new Dictionary<string, string> { { "arg", "value" } });
+            service.Verify(x => x.Execute("value"));
         }
     }
 }

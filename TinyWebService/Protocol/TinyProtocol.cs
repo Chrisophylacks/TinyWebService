@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
@@ -19,7 +20,7 @@ namespace TinyWebService.Protocol
         public const string CallbackIdParameterName = "~c";
         public const string MetadataPath = "~meta";
 
-        private static readonly IDictionary<Type, object> ExistingSerializers = new Dictionary<Type, object>();
+        private static readonly ConcurrentDictionary<Type, object> ExistingSerializers = new ConcurrentDictionary<Type, object>();
 
         public static string CreatePrefix(string hostname, int port, string name)
         {
@@ -77,7 +78,7 @@ namespace TinyWebService.Protocol
                 value = Expression.Parameter(typeof(string));
                 _deserialize = Expression.Lambda<Func<string, T>>(DeserializeExpression(value, typeof(T)), value).Compile();
 
-                ExistingSerializers.Add(typeof(T), this);
+                ExistingSerializers.TryAdd(typeof(T), this);
             }
 
             private Serializer(Func<T, string> serialize, Func<string, T> deserialize)
@@ -85,7 +86,7 @@ namespace TinyWebService.Protocol
                 _serialize = serialize;
                 _deserialize = deserialize;
 
-                ExistingSerializers.Add(typeof(T), this);
+                ExistingSerializers.TryAdd(typeof(T), this);
             }
 
             public static Serializer<T> Instance => _instance ?? (_instance = new Serializer<T>());

@@ -58,7 +58,7 @@ namespace TinyWebService.Client
         protected string RegisterCallbackInstance<T>(T instance)
             where T : class
         {
-            return Endpoint.RegisterCallbackInstance(new SimpleDispatcher<T>(instance));
+            return Endpoint.RegisterCallbackInstance(new SimpleDispatcher<T>(instance, false));
         }
     }
 }

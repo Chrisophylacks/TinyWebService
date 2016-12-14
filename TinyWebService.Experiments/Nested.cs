@@ -28,7 +28,7 @@ namespace TinyWebService.Experiments
             var service = new ValueContainer<ValueContainer<string>>();
             service.UpdateValue(new ValueContainer<string>());
 
-            using (TinyService.Run(service, "test"))
+            using (TinyService.Host(service).AtEndpoint("test"))
             {
                 var client = TinyClient.Create<IValueContainer<IValueContainer<string>>>("test");
                 client.Value.UpdateValue("abc");

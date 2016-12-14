@@ -23,7 +23,7 @@ namespace TinyWebService.Experiments
         public static IMultiService Create(int depth)
         {
             var endpoint = "Multi_" + depth;
-            TinyService.Run<IMultiService>(new MultiService(depth), endpoint);
+            TinyService.Host(new MultiService(depth)).AtEndpoint(endpoint);
             return TinyClient.Create<IMultiService>(endpoint);
         }
 

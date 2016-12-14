@@ -43,7 +43,7 @@ namespace TinyWebService.Service
                 return Tasks.FromResult<object>(proxy.GetExternalAddress());
             }
 
-            return Tasks.FromResult<object>(new SimpleDispatcher<TInstance>(instance));
+            return Tasks.FromResult<object>(new SimpleDispatcher<TInstance>(instance, false));
         }
 
         public static Task<object> WrapInstanceAsync<TInstance>(Task<TInstance> task)
@@ -63,7 +63,7 @@ namespace TinyWebService.Service
                     return proxy.GetExternalAddress();
                 }
 
-                return new SimpleDispatcher<TInstance>(instance);
+                return new SimpleDispatcher<TInstance>(instance, false);
             }, TaskContinuationOptions.ExecuteSynchronously);
         }
     }

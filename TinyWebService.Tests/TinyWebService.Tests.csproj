@@ -64,6 +64,7 @@
     <Compile Include="Stubs\DispatcherRoot.cs" />
     <Compile Include="Stubs\DispatcherThread.cs" />
     <Compile Include="Stubs\DynamicValue.cs" />
+    <Compile Include="Stubs\IAmbiguousMethodsService.cs" />
     <Compile Include="Stubs\IDynamicRoot.cs" />
     <Compile Include="SimpleDispatcherFixture.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
