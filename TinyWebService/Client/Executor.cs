@@ -19,11 +19,6 @@ namespace TinyWebService.Client
             Timeout = TimeSpan.FromSeconds(30);
         }
 
-        public string GetExternalAddress(string path)
-        {
-            return _prefix + path;
-        }
-
         public TimeSpan Timeout { get; set; }
 
         public Task<string> Execute(string path, IDictionary<string, string> parameters = null)

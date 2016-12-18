@@ -49,8 +49,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Callbacks.cs" />
+    <Compile Include="DowncastTest.cs" />
+    <Compile Include="MultiReturnTest.cs" />
     <Compile Include="MultiServer.cs" />
     <Compile Include="Nested.cs" />
+    <Compile Include="OverloadsTest.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

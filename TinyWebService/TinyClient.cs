@@ -1,5 +1,6 @@
 ﻿using System;
 using TinyWebService.Client;
+using TinyWebService.Infrastructure;
 using TinyWebService.Protocol;
 
 namespace TinyWebService
@@ -9,7 +10,10 @@ namespace TinyWebService
         public static T Create<T>(string name, int port = TinyServiceOptions.DefaultPort, string hostname = null)
             where T : class
         {
-            var executor = new Executor(TinyProtocol.CreatePrefix(hostname, port, name)) { Timeout = TimeSpan.FromSeconds(1) };
+            var address = new ObjectAddress(TinyProtocol.CreatePrefix(hostname, port, name), null).Encode();
+
+            var executor = Endpoint.DefaultClientEndpoint.GetExecutor(address);
+            executor.Timeout = TimeSpan.FromSeconds(1);
 
             try
             {
@@ -21,43 +25,30 @@ namespace TinyWebService
                 //ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
             }
 
-            executor.Timeout = TimeSpan.FromSeconds(30);
-            return ProxyBuilder.CreateProxy<T>(executor);
+            return TinyProtocol.Serializer<T>.Deserialize(Endpoint.DefaultClientEndpoint, address);
         }
 
-        public static void EnableDuplexMode(TinyServiceOptions options = null)
+        public static string GetExternalAddress<T>(T proxy)
         {
-            Endpoint.EnableDuplexMode(options ?? new TinyServiceOptions { Port = TinyServiceOptions.DefaultCallbackPort });
+            return (proxy as IRemotableInstance)?.Address;
+        }
+
+        public static TResult CastProxy<T, TResult>(T proxy)
+            where T : class
+            where TResult : class
+        {
+            return (proxy as ProxyBase)?.CastProxy<TResult>();
         }
 
         public static void RegisterCustomProxyFactory<TProxyFactory>()
             where TProxyFactory : class
         {
-            ProxyBuilder.RegisterCustomProxyFactory<TProxyFactory>();
+            TinyProtocol.RegisterCustomProxyFactory<TProxyFactory>();
         }
 
         public static void RegisterCustomSerializer<TValue>(Func<TValue, string> serialize, Func<string, TValue> deserialize)
         {
             TinyProtocol.Serializer<TValue>.RegisterCustom(serialize, deserialize);
-        }
-
-        public static string GetExternalAddress<T>(T proxyObject)
-        {
-            var proxy = proxyObject as ProxyBase;
-            return proxy?.GetExternalAddress();
-        }
-
-        internal static T CreateProxyFromAddress<T>(string encodedAddress)
-            where T : class
-        {
-            if (string.IsNullOrEmpty(encodedAddress))
-            {
-                return null;
-            }
-
-            var address = ObjectAddress.Parse(encodedAddress);
-            var executor = Endpoint.GetExecutor(address.Endpoint);
-            return ProxyBuilder.CreateProxy<T>(executor, address.InstanceId);
         }
     }
 }

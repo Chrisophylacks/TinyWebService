@@ -1,4 +1,6 @@
 ﻿using System;
+using TinyWebService.Client;
+using TinyWebService.Infrastructure;
 using TinyWebService.Protocol;
 using TinyWebService.Service;
 using TinyWebService.Utilities;
@@ -54,8 +56,7 @@ namespace TinyWebService
             public IDisposable AtEndpoint(string endpointName)
             {
                 var prefix = TinyProtocol.CreatePrefix(_allowExternalConnections ? "*" : null, _port, endpointName);
-                var session = new Session(prefix, new SimpleTimer(_cleanupInterval), new SimpleDispatcher<T>(_service, _useThreadDispatcher));
-                return new TinyHttpServer(prefix, session);
+                return Endpoint.CreateServerEndpoint(prefix, _service, _useThreadDispatcher);
             }
         }
     }

@@ -59,12 +59,14 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Client\Endpoint.cs" />
+    <Compile Include="Infrastructure\Endpoint.cs" />
     <Compile Include="Client\Executor.cs" />
     <Compile Include="Client\IExecutor.cs" />
     <Compile Include="Client\ProxyBase.cs" />
     <Compile Include="Client\ProxyBuilder.cs" />
-    <Compile Include="Protocol\ObjectAddress.cs" />
+    <Compile Include="Infrastructure\IEndpoint.cs" />
+    <Compile Include="IRemotableInstance.cs" />
+    <Compile Include="Infrastructure\ObjectAddress.cs" />
     <Compile Include="Protocol\TinyProtocol.cs" />
     <Compile Include="Reflection\ExpressionConstructorBuilder.cs" />
     <Compile Include="Reflection\ExpressionMethodBuilder.cs" />
@@ -77,7 +79,7 @@
     <Compile Include="TinyWebServiceException.cs" />
     <Compile Include="Utilities\ITimer.cs" />
     <Compile Include="Service\Session.cs" />
-    <Compile Include="Service\SimpleDispatcher.cs" />
+    <Compile Include="Service\DispatcherFactory.cs" />
     <Compile Include="Utilities\SimpleTimer.cs" />
     <Compile Include="Service\TinyHttpServer.cs" />
     <Compile Include="TinyClient.cs" />

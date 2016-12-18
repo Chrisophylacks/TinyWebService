@@ -1,64 +1,57 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using TinyWebService.Infrastructure;
 using TinyWebService.Protocol;
 using TinyWebService.Service;
 
 namespace TinyWebService.Client
 {
-    internal abstract class ProxyBase
+    internal abstract class ProxyBase : IRemotableInstance
     {
-        private readonly string _pathPrefix;
         private readonly IExecutor _executor;
-        private readonly string _instanceId;
+        protected readonly IEndpoint Endpoint;
 
-        protected ProxyBase(IExecutor executor, string instanceId = null, string path = null)
+        protected ProxyBase(IEndpoint endpoint, string address)
         {
-            _pathPrefix = string.IsNullOrEmpty(path) ? string.Empty : path + "/";
-            _executor = executor;
-            _instanceId = instanceId;
+            Endpoint = endpoint;
+            Address = ObjectAddress.Parse(address);
+            _executor = Endpoint.GetExecutor(Address.Endpoint + "/");
         }
 
-        public string GetExternalAddress()
+        public ObjectAddress Address { get; }
+
+        string IRemotableInstance.Address { get { return Address.Encode(); } }
+
+        public T CastProxy<T>()
+            where T : class
         {
-            return new ObjectAddress(_executor.GetExternalAddress(_pathPrefix), _instanceId).Encode();
+            return TinyProtocol.Serializer<T>.Deserialize(Endpoint, Address.Encode());
         }
 
         protected Task ExecuteQuery(string subPath, IDictionary<string, string> parameters)
         {
-            return _executor.Execute(_pathPrefix + subPath, parameters);
+            return _executor.Execute(subPath, parameters);
         }
 
         protected Task<T> ExecuteQueryRet<T>(string subPath, IDictionary<string, string> parameters)
         {
-            return _executor.Execute(_pathPrefix + subPath, parameters).ContinueWith(x => TinyProtocol.Serializer<T>.Deserialize(x.Result), TaskContinuationOptions.ExecuteSynchronously);
+            return _executor.Execute(subPath, parameters).ContinueWith(x => TinyProtocol.Serializer<T>.Deserialize(Endpoint, x.Result), TaskContinuationOptions.ExecuteSynchronously);
         }
 
         protected T CreateMemberProxy<T>(string subPath)
             where T : class
         {
-            return ProxyBuilder.CreateProxy<T>(_executor, _instanceId, _pathPrefix + subPath);
-        }
-
-        protected Task<T> CreateDetachedProxy<T>(string subPath, IDictionary<string, string> query)
-            where T : class
-        {
-            return _executor.Execute(_pathPrefix + subPath, query).ContinueWith(x => TinyClient.CreateProxyFromAddress<T>(x.Result), TaskContinuationOptions.ExecuteSynchronously);
+            return TinyProtocol.Serializer<T>.Deserialize(Endpoint, Address.Combine(subPath).Encode());
         }
 
         protected IDictionary<string, string> CreateQueryBuilder()
         {
             var dict = new Dictionary<string, string>();
-            if (!string.IsNullOrEmpty(_instanceId))
+            if (!string.IsNullOrEmpty(Address.InstanceId))
             {
-                dict[TinyProtocol.InstanceIdParameterName] = _instanceId;
+                dict[TinyProtocol.InstanceIdParameterName] = Address.InstanceId;
             }
             return dict;
-        }
-
-        protected string RegisterCallbackInstance<T>(T instance)
-            where T : class
-        {
-            return Endpoint.RegisterCallbackInstance(new SimpleDispatcher<T>(instance, false));
         }
     }
 }
