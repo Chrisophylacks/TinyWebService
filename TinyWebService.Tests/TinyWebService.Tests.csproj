@@ -60,6 +60,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ProxiesFixture.cs" />
+    <Compile Include="SerializerFixture.cs" />
+    <Compile Include="Stubs\CustomProxyFactory.cs" />
     <Compile Include="Stubs\DataObject.cs" />
     <Compile Include="Stubs\DispatcherRoot.cs" />
     <Compile Include="Stubs\DispatcherThread.cs" />
@@ -68,6 +70,7 @@
     <Compile Include="Stubs\IDynamicRoot.cs" />
     <Compile Include="SimpleDispatcherFixture.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Stubs\IDynamicValueProxy.cs" />
     <Compile Include="Stubs\IGenericFinder.cs" />
     <Compile Include="Stubs\IMethodRoot.cs" />
     <Compile Include="Stubs\IRoot.cs" />

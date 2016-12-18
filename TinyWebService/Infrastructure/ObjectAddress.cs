@@ -1,6 +1,6 @@
 using System;
 
-namespace TinyWebService.Protocol
+namespace TinyWebService.Infrastructure
 {
     internal sealed class ObjectAddress
     {
@@ -22,6 +22,11 @@ namespace TinyWebService.Protocol
                 return new ObjectAddress(terms[0], null);
             }
             return new ObjectAddress(terms[0], terms[1]);
+        }
+
+        public ObjectAddress Combine(string subPath)
+        {
+            return new ObjectAddress(Endpoint + "/" + subPath, InstanceId);
         }
 
         public string Encode()

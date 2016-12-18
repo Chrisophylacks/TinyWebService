@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using TinyWebService.Client;
+using TinyWebService.Infrastructure;
 using TinyWebService.Protocol;
 using TinyWebService.Utilities;
 
@@ -7,9 +8,9 @@ namespace TinyWebService.Service
 {
     internal sealed class DispatcherHelpers
     {
-        public static Task<object> WrapTask(Task task)
+        public static Task<string> WrapTask(Task task)
         {
-            return task.ContinueWith<object>(x =>
+            return task.ContinueWith(x =>
             {
                 if (x.Exception != null)
                 {
@@ -19,52 +20,14 @@ namespace TinyWebService.Service
             }, TaskContinuationOptions.ExecuteSynchronously);
         }
 
-        public static Task<object> WrapValue<TValue>(TValue value)
+        public static Task<string> WrapValue<TValue>(IEndpoint endpoint, TValue value)
         {
-            return Tasks.FromResult<object>(TinyProtocol.Serializer<TValue>.Serialize(value));
+            return Tasks.FromResult(TinyProtocol.Serializer<TValue>.Serialize(endpoint, value));
         }
 
-        public static Task<object> WrapValueAsync<TValue>(Task<TValue> task)
+        public static Task<string> WrapValueAsync<TValue>(IEndpoint endpoint, Task<TValue> task)
         {
-            return task.ContinueWith<object>(x => TinyProtocol.Serializer<TValue>.Serialize(x.Result), TaskContinuationOptions.ExecuteSynchronously);
-        }
-
-        public static Task<object> WrapInstance<TInstance>(TInstance instance)
-            where TInstance : class
-        {
-            if (instance == null)
-            {
-                return Tasks.FromResult<object>(null);
-            }
-
-            var proxy = instance as ProxyBase;
-            if (proxy != null)
-            {
-                return Tasks.FromResult<object>(proxy.GetExternalAddress());
-            }
-
-            return Tasks.FromResult<object>(new SimpleDispatcher<TInstance>(instance, false));
-        }
-
-        public static Task<object> WrapInstanceAsync<TInstance>(Task<TInstance> task)
-            where TInstance : class
-        {
-            return task.ContinueWith<object>(x =>
-            {
-                var instance = x.Result;
-                if (instance == null)
-                {
-                    return null;
-                }
-
-                var proxy = instance as ProxyBase;
-                if (proxy != null)
-                {
-                    return proxy.GetExternalAddress();
-                }
-
-                return new SimpleDispatcher<TInstance>(instance, false);
-            }, TaskContinuationOptions.ExecuteSynchronously);
+            return task.ContinueWith(x => TinyProtocol.Serializer<TValue>.Serialize(endpoint, x.Result), TaskContinuationOptions.ExecuteSynchronously);
         }
     }
 }

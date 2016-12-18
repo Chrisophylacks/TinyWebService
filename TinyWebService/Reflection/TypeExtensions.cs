@@ -41,7 +41,7 @@ namespace TinyWebService.Reflection
                 return type.GetElementType();
             }
 
-            if (type.IsGenericType && typeof (IEnumerable<>).IsAssignableFrom(type.GetGenericTypeDefinition()))
+            if (type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(IEnumerable<>) || GetTypeHierarchy(type).Any(x => x.IsGenericType && x.GetGenericTypeDefinition() == typeof(IEnumerable<>))))
             {
                 return type.GetGenericArguments()[0];
             }

@@ -9,8 +9,12 @@ namespace TinyWebService.Experiments
         static void Main(string[] args)
         {
             //TestProbing();
-            MultiServiceTest.Run();
+            //MultiServiceTest.Run();
+            //CallbacksTest.Run();
             //NestedTest.Run();
+            //MultiReturnTest.Run();
+            //DowncastTest.Run();
+            OverloadsTest.Run();
             Console.ReadLine();
         }
 
@@ -22,6 +26,10 @@ namespace TinyWebService.Experiments
             }
             catch (TinyWebServiceException)
             {
+            }
+            catch (Exception)
+            {
+                throw;
             }
         }
     }

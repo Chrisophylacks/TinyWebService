@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -10,6 +9,8 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
+using TinyWebService.Client;
+using TinyWebService.Infrastructure;
 using TinyWebService.Reflection;
 
 namespace TinyWebService.Protocol
@@ -21,6 +22,7 @@ namespace TinyWebService.Protocol
         public const string MetadataPath = "~meta";
 
         private static readonly ConcurrentDictionary<Type, object> ExistingSerializers = new ConcurrentDictionary<Type, object>();
+        private static readonly ConcurrentDictionary<Type, MethodInfo> CustomFactories = new ConcurrentDictionary<Type, MethodInfo>();
 
         public static string CreatePrefix(string hostname, int port, string name)
         {
@@ -45,46 +47,114 @@ namespace TinyWebService.Protocol
                 return IsSerializableType(itemType);
             }
 
+            if (IsRemotableType(type))
+            {
+                return true;
+            }
+
             return false;
         }
 
         public static bool IsRemotableType(Type type)
         {
-            return type.IsInterface;
+            if (type.IsGenericType && CustomFactories.ContainsKey(type.GetGenericTypeDefinition()))
+            {
+                return true;
+            }
+
+            if (type.TryGetCollectionItemType() != null)
+            {
+                return false;
+            }
+
+            return type.IsInterface || CustomFactories.ContainsKey(type);
         }
 
-        public static Expression Serialize(this Expression expression)
+        public static Expression Serialize(this Expression expression, Expression endpoint)
         {
-            return Expression.Call(typeof (Serializer<>).MakeGenericType(expression.Type).GetMethod("Serialize", BindingFlags.Public | BindingFlags.Static), expression);
+            return Expression.Call(typeof (Serializer<>).MakeGenericType(expression.Type).GetMethod("Serialize", BindingFlags.Public | BindingFlags.Static), endpoint, expression);
         }
 
-        public static Expression Deserialize(this Expression expression, Type targetType)
+        public static Expression Deserialize(this Expression expression, Expression endpoint, Type targetType)
         {
-            return Expression.Call(typeof(Serializer<>).MakeGenericType(targetType).GetMethod("Deserialize", BindingFlags.Public | BindingFlags.Static), expression);
+            return Expression.Call(typeof(Serializer<>).MakeGenericType(targetType).GetMethod("Deserialize", BindingFlags.Public | BindingFlags.Static), endpoint, expression);
+        }
+
+        public static void RegisterCustomProxyFactory<TProxyFactory>()
+            where TProxyFactory : class
+        {
+            foreach (var method in typeof(TProxyFactory).GetMethods(BindingFlags.Public | BindingFlags.Static))
+            {
+                var parameters = method.GetParameters();
+                if (parameters.Length != 1)
+                {
+                    continue;
+                }
+
+                CustomFactories[method.ReturnType.IsGenericType ? method.ReturnType.GetGenericTypeDefinition() : method.ReturnType] = method;
+            }
+        }
+
+        public static bool TryGetCustomProxyFactory(Type interfaceType, out MethodInfo customFactory)
+        {
+            if (interfaceType.IsGenericType)
+            {
+                MethodInfo customFactoryPrototype;
+                if (CustomFactories.TryGetValue(interfaceType.GetGenericTypeDefinition(), out customFactoryPrototype))
+                {
+                    customFactory = customFactoryPrototype.MakeGenericMethod(interfaceType.GetGenericArguments());
+                    return true;
+                }
+            }
+            else
+            {
+                return CustomFactories.TryGetValue(interfaceType, out customFactory);
+            }
+
+            customFactory = null;
+            return false;
+        }
+
+        internal static string SerializeRemotableInstance(IEndpoint endpoint, object proxyObject)
+        {
+            if (proxyObject == null)
+            {
+                return string.Empty;
+            }
+
+            var remotable = proxyObject as IRemotableInstance;
+            if (remotable != null)
+            {
+                return remotable.Address;
+            }
+
+            return endpoint.RegisterInstance(proxyObject);
         }
 
         public sealed class Serializer<T>
         {
             private static Serializer<T> _instance;
 
-            private readonly Func<T, string> _serialize;
-            private readonly Func<string, T> _deserialize;
+            private readonly Func<IEndpoint, T, string> _serialize;
+            private readonly Func<IEndpoint, string, T> _deserialize;
 
             private Serializer()
             {
+                var endpoint = Expression.Parameter(typeof (IEndpoint));
                 var value = Expression.Parameter(typeof(T));
-                _serialize = Expression.Lambda<Func<T, string>>(SerializeExpression(value), value).Compile();
+                _serialize = Expression.Lambda<Func<IEndpoint, T, string>>(SerializeExpression(endpoint, value), endpoint, value).Compile();
 
                 value = Expression.Parameter(typeof(string));
-                _deserialize = Expression.Lambda<Func<string, T>>(DeserializeExpression(value, typeof(T)), value).Compile();
+                var deserializeExpression = Expression.Lambda<Func<IEndpoint, string, T>>(DeserializeExpression(endpoint, value, typeof (T)), endpoint, value);
+                _deserialize = deserializeExpression.Compile();
 
                 ExistingSerializers.TryAdd(typeof(T), this);
             }
 
             private Serializer(Func<T, string> serialize, Func<string, T> deserialize)
             {
-                _serialize = serialize;
-                _deserialize = deserialize;
+                _serialize = (e, v) => serialize(v);
+                _deserialize = (e, v) => deserialize(v);
 
                 ExistingSerializers.TryAdd(typeof(T), this);
             }
@@ -96,11 +166,11 @@ namespace TinyWebService.Protocol
                 _instance = new Serializer<T>(serialize, deserialize);
             }
 
-            public static string Serialize(T value) => Instance._serialize(value);
+            public static string Serialize(IEndpoint endpoint, T value) => Instance._serialize(endpoint, value);
 
-            public static T Deserialize(string value) => Instance._deserialize(value);
+            public static T Deserialize(IEndpoint endpoint, string value) => Instance._deserialize(endpoint, value);
 
-            private static Expression SerializeExpression(Expression value)
+            private static Expression SerializeExpression(Expression endpoint, Expression value)
             {
                 if (value.Type == typeof(void))
                 {
@@ -134,13 +204,21 @@ namespace TinyWebService.Protocol
                 var itemType = value.Type.TryGetCollectionItemType();
                 if (itemType != null)
                 {
-                    return Expression.Call(typeof(Serializer<>).MakeGenericType(itemType).GetMethod("SerializeCollection", BindingFlags.NonPublic | BindingFlags.Static), value);
+                    return Expression.Call(typeof(Serializer<>).MakeGenericType(itemType).GetMethod("SerializeCollection", BindingFlags.NonPublic | BindingFlags.Static), endpoint, value);
+                }
+
+                if (IsRemotableType(value.Type))
+                {
+                    return Expression.Call(
+                        typeof (TinyProtocol).GetMethod("SerializeRemotableInstance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic),
+                        endpoint,
+                        value);
                 }
 
                 throw new Exception("cannot serialize expression of type " + value.Type);
             }
 
-            private static Expression DeserializeExpression(Expression value, Type targetType)
+            private static Expression DeserializeExpression(Expression endpoint, Expression value, Type targetType)
             {
                 if (targetType == typeof(void))
                 {
@@ -180,7 +258,7 @@ namespace TinyWebService.Protocol
                 var itemType = targetType.TryGetCollectionItemType();
                 if (itemType != null)
                 {
-                    var enumerable = Expression.Call(typeof(Serializer<>).MakeGenericType(itemType).GetMethod("DeserializeCollection", BindingFlags.NonPublic | BindingFlags.Static), value);
+                    var enumerable = Expression.Call(typeof(Serializer<>).MakeGenericType(itemType).GetMethod("DeserializeCollection", BindingFlags.NonPublic | BindingFlags.Static), endpoint, value);
                     if (targetType.IsArray)
                     {
                         return Expression.Call(typeof (Enumerable).GetMethod("ToArray").MakeGenericMethod(itemType), enumerable);
@@ -188,17 +266,44 @@ namespace TinyWebService.Protocol
                     return enumerable;
                 }
 
+                if (IsRemotableType(targetType))
+                {
+                    MethodInfo customFactory;
+                    TryGetCustomProxyFactory(targetType, out customFactory);
+
+                    Expression createExpression;
+                    if (customFactory != null)
+                    {
+                        var realProxyType = ProxyBuilder.BuildProxyType(customFactory.GetParameters()[0].ParameterType);
+                        createExpression = Expression.Call(
+                            customFactory,
+                            Expression.New(realProxyType.GetConstructor(new [] { typeof(IEndpoint), typeof(string) }), endpoint, value));
+                    }
+                    else
+                    {
+                        var type = ProxyBuilder.BuildProxyType(targetType);
+                        createExpression = Expression.New(type.GetConstructor(new[] { typeof(IEndpoint), typeof (string) }), endpoint, value);
+                    }
+
+                    return Expression.Condition(
+                        Expression.Call(
+                            typeof (string).GetMethod("IsNullOrEmpty"),
+                            value),
+                        Expression.Constant(null, targetType),
+                        Expression.Convert(createExpression, targetType));
+                }
+
                 throw new Exception("cannot deserialize expression to type " + targetType);
             }
 
-            private static string SerializeCollection(IEnumerable<T> collection)
+            private static string SerializeCollection(IEndpoint endpoint, IEnumerable<T> collection)
             {
-                return "[" + string.Join(",", collection.Select(Instance._serialize)) + "]";
+                return "[" + string.Join(",", collection.Select(x => Instance._serialize(endpoint, x))) + "]";
             }
 
-            private static IList<T> DeserializeCollection(string value)
+            private static IList<T> DeserializeCollection(IEndpoint endpoint, string value)
             {
-                return value.Substring(1, value.Length - 2).Split(',').Select(Instance._deserialize).ToList();
+                return value.Substring(1, value.Length - 2).Split(',').Select(x => Instance._deserialize(endpoint, x)).ToList();
             }
 
             private static string SerializeClass(T instance)

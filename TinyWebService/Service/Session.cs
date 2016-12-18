@@ -12,15 +12,13 @@ namespace TinyWebService.Service
     internal sealed class Session : IDisposable
     {
         private readonly ConcurrentDictionary<string, RegisteredInstance> _instances = new ConcurrentDictionary<string, RegisteredInstance>();
-        private readonly string _prefix;
         private readonly ISimpleDispatcher _rootInstance;
         private readonly ITimer _cleanupTimer;
         private long _currentOperationId;
         private long _cleanupOperationId;
 
-        public Session(string prefix, ITimer cleanupTimer, ISimpleDispatcher rootInstance = null)
+        public Session(ITimer cleanupTimer, ISimpleDispatcher rootInstance = null)
         {
-            _prefix = prefix;
             _rootInstance = rootInstance;
             _cleanupTimer = cleanupTimer;
             _cleanupTimer.Tick += CleanupTimer_Tick;
@@ -81,17 +79,7 @@ namespace TinyWebService.Service
                 throw new InvalidOperationException("Callback operation must specify instanceId");
             }
 
-            return dispatcher.Execute(path, parameters).ContinueWith<string>(x =>
-            {
-                var result = x.Result;
-                var newInstance = result as ISimpleDispatcher;
-                if (newInstance != null)
-                {
-                    return new ObjectAddress(_prefix, RegisterInstance(newInstance)).Encode();
-                }
-
-                return (string) result;
-            }, TaskContinuationOptions.ExecuteSynchronously);
+            return dispatcher.Execute(path, parameters);
         }
 
         private static IDictionary<string, string> ParseQuery(string query)

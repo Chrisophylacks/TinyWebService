@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -7,6 +8,7 @@ using System.Web;
 
 namespace TinyWebService.Service
 {
+    [ExcludeFromCodeCoverage]
     internal sealed class TinyHttpServer : IDisposable
     {
         private readonly Session _session;
@@ -40,6 +42,9 @@ namespace TinyWebService.Service
                     {
                         HandleRespose(x.Result);
                     }
+                    catch (AggregateException)
+                    {
+                    }
                     catch (HttpListenerException)
                     {
                     }
@@ -71,7 +76,6 @@ namespace TinyWebService.Service
                 context.Response.OutputStream.Write(responseBuffer, 0, responseBuffer.Length);
                 context.Response.OutputStream.Close();
             }, TaskContinuationOptions.ExecuteSynchronously);
-
         }
     }
 }

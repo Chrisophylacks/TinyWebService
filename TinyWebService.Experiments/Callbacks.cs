@@ -52,8 +52,6 @@ namespace TinyWebService.Experiments
     {
         public static void Run()
         {
-            TinyClient.EnableDuplexMode();
-
             using (TinyService.Host(new Server()).AtEndpoint("test"))
             {
                 var client = TinyClient.Create<IServer>("test");
