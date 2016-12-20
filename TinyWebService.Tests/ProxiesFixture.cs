@@ -25,6 +25,7 @@ namespace TinyWebService.Tests
             TinyProtocol.RegisterCustomProxyFactory<CustomProxyFactory>();
             _executor = new Mock<IExecutor>();
             _endpoint = new Mock<IEndpoint>();
+            _endpoint.Setup(x => x.GetExecutor(It.IsAny<string>())).Returns<string>(x => new PrefixedExecutor(x, _executor.Object));
         }
 
         [Test]
@@ -42,6 +43,22 @@ namespace TinyWebService.Tests
         {
             var proxy = CreateProxy<IGenericFinder>();
             new Action(() => { proxy.Find(1m); }).ShouldThrow<InvalidOperationException>();
+        }
+
+        [Test]
+        public void ShouldCreateCustomProxy()
+        {
+            var proxy = CreateProxy<DynamicValue<int>>();
+            proxy.CurrentValue.ShouldBe(0);
+            _executor.Verify(x => x.Execute(Prefix + "/CurrentValue", new Dictionary<string, string>()));
+        }
+
+        [Test]
+        public void ShouldCreateCustomMemberProxy()
+        {
+            var proxy = CreateProxy<IDynamicRoot>();
+            proxy.IntValue.CurrentValue.ShouldBe(0);
+            _executor.Verify(x => x.Execute(Prefix + "/IntValue/CurrentValue", new Dictionary<string, string>()));
         }
 
         private T CreateProxy<T>(string instanceId = null, string path = null)

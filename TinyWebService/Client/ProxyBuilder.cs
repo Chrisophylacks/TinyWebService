@@ -19,7 +19,6 @@ namespace TinyWebService.Client
         private static readonly MethodInfo ExecuteQueryRet;
         private static readonly MethodInfo CreateQuery;
         private static readonly MethodInfo CreateMemberProxy;
-        private static readonly MethodInfo RegisterCallbackInstance;
         private static readonly MethodInfo AddParameter;
 
         private static readonly ConstructorInfo ExceptionConstructor;
@@ -35,7 +34,6 @@ namespace TinyWebService.Client
             ExecuteQueryRet = typeof(ProxyBase).GetMethod("ExecuteQueryRet", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             CreateQuery = typeof(ProxyBase).GetMethod("CreateQueryBuilder", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             CreateMemberProxy = typeof(ProxyBase).GetMethod("CreateMemberProxy", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            RegisterCallbackInstance = typeof(ProxyBase).GetMethod("RegisterCallbackInstance", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             AddParameter = typeof (IDictionary<string, string>).GetMethod("Add", BindingFlags.Public | BindingFlags.Instance);
 
             ExceptionConstructor = typeof (InvalidOperationException).GetConstructor(new[] { typeof (string) });
@@ -89,14 +87,14 @@ namespace TinyWebService.Client
                 block.Add(Expression.Assign(dict, builder.This.CallMember(CreateQuery)));
 
                 string errorMessage = null;
-                if (builder.Parameters.All(x => TinyProtocol.IsSerializableType(x.Type)))
+                if (builder.Parameters.All(x => TinyProtocol.Check(x.Type).CanSerialize()))
                 {
                     block.AddRange(builder.Parameters.Select(x => dict.CallMember(
                         AddParameter,
                         Expression.Constant(x.Name),
                         x.Serialize(builder.This.MemberField(typeof(ProxyBase).GetField("Endpoint", BindingFlags.Instance | BindingFlags.NonPublic))))));
 
-                    if (TinyProtocol.IsSerializableType(signature.ReturnType))
+                    if (TinyProtocol.Check(signature.ReturnType).CanDeserialize())
                     {
                         var call = signature.ReturnType == typeof (void)
                             ? builder.This.CallMember(ExecuteQuery, Expression.Constant(method.Name), dict)
@@ -146,7 +144,7 @@ namespace TinyWebService.Client
 
         private static void ImplementGetter(TypeBuilder typeBuilder, ExpressionPropertyBuilder builder, PropertyInfo property)
         {
-            if (TinyProtocol.IsRemotableType(property.PropertyType) && property.PropertyType.TryGetCollectionItemType() == null)
+            if (TinyProtocol.Check(property.PropertyType).CanBuildProxy())
             {
                 var field = typeBuilder.DefineField("<prx>_" + property.Name, property.PropertyType, FieldAttributes.Private);
                 builder.ImplementGetter(
@@ -158,7 +156,7 @@ namespace TinyWebService.Client
                 return;
             }
 
-            bool isSerializable = TinyProtocol.IsSerializableType(property.PropertyType);
+            bool isSerializable = TinyProtocol.Check(property.PropertyType).CanDeserialize();
             var dict = Expression.Parameter(typeof(IDictionary<string, string>));
             var block = new List<Expression>();
             block.Add(Expression.Assign(dict, builder.This.CallMember(CreateQuery)));
@@ -185,7 +183,7 @@ namespace TinyWebService.Client
             var block = new List<Expression>();
             block.Add(Expression.Assign(dict, builder.This.CallMember(CreateQuery)));
             block.Add(dict.CallMember(AddParameter, Expression.Constant("value"), builder.Value.Serialize(builder.This.MemberField(typeof(ProxyBase).GetField("Endpoint", BindingFlags.Instance | BindingFlags.NonPublic)))));
-            if (TinyProtocol.IsSerializableType(property.PropertyType))
+            if (TinyProtocol.Check(property.PropertyType).CanSerialize())
             {
                 block.Add(Wait(builder.This.CallMember(ExecuteQuery, Expression.Constant(property.Name), dict)));
             }

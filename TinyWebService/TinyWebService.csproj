@@ -68,6 +68,7 @@
     <Compile Include="IRemotableInstance.cs" />
     <Compile Include="Infrastructure\ObjectAddress.cs" />
     <Compile Include="Protocol\TinyProtocol.cs" />
+    <Compile Include="Protocol\TypeFlags.cs" />
     <Compile Include="Reflection\ExpressionConstructorBuilder.cs" />
     <Compile Include="Reflection\ExpressionMethodBuilder.cs" />
     <Compile Include="Reflection\ExpressionPropertyBuilder.cs" />

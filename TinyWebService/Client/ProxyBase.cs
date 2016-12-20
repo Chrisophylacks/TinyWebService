@@ -2,11 +2,10 @@
 using System.Threading.Tasks;
 using TinyWebService.Infrastructure;
 using TinyWebService.Protocol;
-using TinyWebService.Service;
 
 namespace TinyWebService.Client
 {
-    internal abstract class ProxyBase : IRemotableInstance
+    internal abstract class ProxyBase
     {
         private readonly IExecutor _executor;
         protected readonly IEndpoint Endpoint;
@@ -20,12 +19,10 @@ namespace TinyWebService.Client
 
         public ObjectAddress Address { get; }
 
-        string IRemotableInstance.Address { get { return Address.Encode(); } }
-
-        public T CastProxy<T>()
+        public Task<T> CastProxy<T>()
             where T : class
         {
-            return TinyProtocol.Serializer<T>.Deserialize(Endpoint, Address.Encode());
+            return ExecuteQueryRet<T>(TinyProtocol.DetachCommand, CreateQueryBuilder());
         }
 
         protected Task ExecuteQuery(string subPath, IDictionary<string, string> parameters)

@@ -13,8 +13,8 @@ namespace TinyWebService.Experiments
             //CallbacksTest.Run();
             //NestedTest.Run();
             //MultiReturnTest.Run();
-            //DowncastTest.Run();
-            OverloadsTest.Run();
+            DowncastTest.Run();
+            //OverloadsTest.Run();
             Console.ReadLine();
         }
 

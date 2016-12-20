@@ -46,15 +46,19 @@ namespace TinyWebService.Tests
         [Test]
         public void ShouldSerializeCustomProxies()
         {
-            var instance = new DynamicValue<int>(() => 0);
+            var instance = new DynamicValue<int>(null, () => 0);
             _endpoint.Setup(x => x.RegisterInstance(instance)).Returns("i1");
             Serialize(instance).ShouldBe("i1");
             Serialize<DynamicValue<int>>(null).ShouldBe(String.Empty);
 
+            // transparent serialization scenario
+            var instance2 = new DynamicValue<int>(TinyProtocol.Serializer<IDynamicValueProxy<int>>.Deserialize(_endpoint.Object, "otherProxy"), () => 0);
+            Serialize(instance2).ShouldBe("otherProxy");
+
             Deserialize<DynamicValue<int>>("i1").ShouldNotBeNull();
             Deserialize<DynamicValue<int>>(String.Empty).ShouldBe(null);
         }
-        
+
         [Test]
         public void ShouldSerializeStandardProxies()
         {

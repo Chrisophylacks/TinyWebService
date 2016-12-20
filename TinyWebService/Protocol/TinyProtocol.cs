@@ -18,8 +18,8 @@ namespace TinyWebService.Protocol
     internal static class TinyProtocol
     {
         public const string InstanceIdParameterName = "~i";
-        public const string CallbackIdParameterName = "~c";
         public const string MetadataPath = "~meta";
+        public const string DetachCommand = "~detach";
 
         private static readonly ConcurrentDictionary<Type, object> ExistingSerializers = new ConcurrentDictionary<Type, object>();
         private static readonly ConcurrentDictionary<Type, MethodInfo> CustomFactories = new ConcurrentDictionary<Type, MethodInfo>();
@@ -29,45 +29,39 @@ namespace TinyWebService.Protocol
             return string.Format("http://{0}:{1}/{2}/", hostname ?? "localhost", port, name);
         }
 
-        public static bool IsSerializableType(Type type)
+        public static TypeFlags Check(Type type)
         {
             if (type.IsPrimitive || type == typeof(string) || type == typeof(void) || type.IsEnum || ExistingSerializers.ContainsKey(type))
             {
-                return true;
-            }
-
-            if (type.IsClass && type.IsDefined(typeof (DataContractAttribute), true))
-            {
-                return true;
+                return TypeFlags.DataType;
             }
 
             var itemType = type.TryGetCollectionItemType();
             if (itemType != null)
             {
-                return IsSerializableType(itemType);
+                return Check(itemType) & (TypeFlags.CanSerialize | TypeFlags.CanDeserialize);
             }
 
-            if (IsRemotableType(type))
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        public static bool IsRemotableType(Type type)
-        {
             if (type.IsGenericType && CustomFactories.ContainsKey(type.GetGenericTypeDefinition()))
             {
-                return true;
+                return TypeFlags.ProxyType;
             }
 
-            if (type.TryGetCollectionItemType() != null)
+            if (type.IsInterface || CustomFactories.ContainsKey(type))
             {
-                return false;
+                return TypeFlags.ProxyType;
             }
 
-            return type.IsInterface || CustomFactories.ContainsKey(type);
+            if (type.IsClass)
+            {
+                if (type.IsDefined(typeof (DataContractAttribute), true))
+                {
+                    return TypeFlags.DataType;
+                }
+                return TypeFlags.DispatcherType;
+            }
+
+            return TypeFlags.None;
         }
 
         public static Expression Serialize(this Expression expression, Expression endpoint)
@@ -115,6 +109,21 @@ namespace TinyWebService.Protocol
             return false;
         }
 
+        internal static ProxyBase GetRealProxy(object proxyObject)
+        {
+            var realProxy = proxyObject as ProxyBase;
+            if (realProxy == null)
+            {
+                var remotable = proxyObject as IRemotableInstance;
+                if (remotable != null)
+                {
+                    realProxy = remotable.RealProxy as ProxyBase;
+                }
+            }
+
+            return realProxy;
+        }
+
         internal static string SerializeRemotableInstance(IEndpoint endpoint, object proxyObject)
         {
             if (proxyObject == null)
@@ -122,10 +131,10 @@ namespace TinyWebService.Protocol
                 return string.Empty;
             }
 
-            var remotable = proxyObject as IRemotableInstance;
-            if (remotable != null)
+            var realProxy = GetRealProxy(proxyObject);
+            if (realProxy != null)
             {
-                return remotable.Address;
+                return realProxy.Address.Encode();
             }
 
             return endpoint.RegisterInstance(proxyObject);
@@ -207,7 +216,7 @@ namespace TinyWebService.Protocol
                     return Expression.Call(typeof(Serializer<>).MakeGenericType(itemType).GetMethod("SerializeCollection", BindingFlags.NonPublic | BindingFlags.Static), endpoint, value);
                 }
 
-                if (IsRemotableType(value.Type))
+                if (Check(value.Type).CanBuildDispatcher())
                 {
                     return Expression.Call(
                         typeof (TinyProtocol).GetMethod("SerializeRemotableInstance", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic),
@@ -250,11 +259,6 @@ namespace TinyWebService.Protocol
                         targetType);
                 }
 
-                if (targetType.IsClass && targetType.IsDefined(typeof (DataContractAttribute), true))
-                {
-                    return Expression.Call(typeof (Serializer<T>).GetMethod("DeserializeClass", BindingFlags.NonPublic | BindingFlags.Static), value);
-                }
-
                 var itemType = targetType.TryGetCollectionItemType();
                 if (itemType != null)
                 {
@@ -266,7 +270,7 @@ namespace TinyWebService.Protocol
                     return enumerable;
                 }
 
-                if (IsRemotableType(targetType))
+                if (Check(targetType).CanBuildProxy())
                 {
                     MethodInfo customFactory;
                     TryGetCustomProxyFactory(targetType, out customFactory);
@@ -291,6 +295,17 @@ namespace TinyWebService.Protocol
                             value),
                         Expression.Constant(null, targetType),
                         Expression.Convert(createExpression, targetType));
+                }
+
+                if (targetType.IsClass)
+                {
+                    if (targetType.IsDefined(typeof(DataContractAttribute), true))
+                    {
+                        return Expression.Call(typeof(Serializer<T>).GetMethod("DeserializeClass", BindingFlags.NonPublic | BindingFlags.Static), value);
+                    }
+                    return Expression.Block(
+                            Expression.Throw(Expression.New(typeof(InvalidOperationException).GetConstructor(new[] { typeof(string) }), Expression.Constant("cannot deserialize non-data class"))),
+                            Expression.Default(targetType));
                 }
 
                 throw new Exception("cannot deserialize expression to type " + targetType);

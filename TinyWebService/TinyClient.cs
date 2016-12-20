@@ -28,16 +28,15 @@ namespace TinyWebService
             return TinyProtocol.Serializer<T>.Deserialize(Endpoint.DefaultClientEndpoint, address);
         }
 
-        public static string GetExternalAddress<T>(T proxy)
+        public static string GetExternalAddress(object proxy)
         {
-            return (proxy as IRemotableInstance)?.Address;
+            return TinyProtocol.GetRealProxy(proxy)?.Address.Encode();
         }
 
-        public static TResult CastProxy<T, TResult>(T proxy)
-            where T : class
+        public static TResult CastProxy<TResult>(object proxy)
             where TResult : class
         {
-            return (proxy as ProxyBase)?.CastProxy<TResult>();
+            return TinyProtocol.GetRealProxy(proxy)?.CastProxy<TResult>().Result;
         }
 
         public static void RegisterCustomProxyFactory<TProxyFactory>()

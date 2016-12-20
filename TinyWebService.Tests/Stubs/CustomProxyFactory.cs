@@ -4,7 +4,7 @@ namespace TinyWebService.Tests.Stubs
     {
         public static DynamicValue<T> CreateProxy<T>(IDynamicValueProxy<T> proxy)
         {
-            return new DynamicValue<T>(() => proxy.CurrentValue);
+            return new DynamicValue<T>(proxy, () => proxy.CurrentValue);
         }
     }
 }

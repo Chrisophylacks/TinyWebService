@@ -99,10 +99,15 @@ namespace TinyWebService.Service
                         break;
                     }
 
-                    var indexer = typeof(IDictionary<string, string>).GetProperty("Item");
+                    if (entries[i] == TinyProtocol.DetachCommand)
+                    {
+                        break;
+                    }
+
+                    var indexer = typeof (IDictionary<string, string>).GetProperty("Item");
                     var method = current.Type.GetTypeHierarchy()
                         .SelectMany(x => x.GetMethods(BindingFlags.Public | BindingFlags.Instance))
-                        .FirstOrDefault(x => x.Name == entries[i] && x.GetParameters().All(p => TinyProtocol.IsSerializableType(p.ParameterType)));
+                        .FirstOrDefault(x => x.Name == entries[i] && x.GetParameters().All(p => TinyProtocol.Check(p.ParameterType).CanDeserialize()));
                     if (method == null)
                     {
                         current = ThrowExpression(string.Format("member '{0}' not found", entries[i]));
@@ -116,7 +121,7 @@ namespace TinyWebService.Service
                 }
 
                 var signature = new AsyncTypeSignature(current.Type);
-                if (TinyProtocol.IsSerializableType(signature.ReturnType))
+                if (TinyProtocol.Check(signature.ReturnType).CanSerialize())
                 {
                     if (signature.ReturnType == typeof(void))
                     {
@@ -156,7 +161,7 @@ namespace TinyWebService.Service
 
             private Expression DeserializeParameter(Expression parameter, Expression endpoint, Type parameterType)
             {
-                if (TinyProtocol.IsSerializableType(parameterType))
+                if (TinyProtocol.Check(parameterType).CanDeserialize())
                 {
                     return parameter.Deserialize(endpoint, parameterType);
                 }

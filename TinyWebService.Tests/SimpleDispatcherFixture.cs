@@ -76,6 +76,17 @@ namespace TinyWebService.Tests
         }
 
         [Test]
+        public void ShouldDetachInstanceOnCorrepondingCommand()
+        {
+            var root = new Root();
+            var dispatcher = DispatcherFactory.CreateDispatcher(root, _endpoint.Object, false);
+
+            _endpoint.Setup(x => x.RegisterInstance(root)).Returns("instance");
+            dispatcher.Execute("~detach", new Dictionary<string, string>()).Result.ShouldBe("instance");
+            _endpoint.Verify(x => x.RegisterInstance(root));
+        }
+
+        [Test]
         public void ShouldResolveAmbiguityByDiscardingIncompatibleMethods()
         {
             var service = new Mock<IAmbiguousMethodsService>();
