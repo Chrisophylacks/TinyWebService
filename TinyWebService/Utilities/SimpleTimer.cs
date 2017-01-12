@@ -19,12 +19,19 @@ namespace TinyWebService.Utilities
 
         public void Dispose()
         {
-            _timer?.Dispose();
+            if (_timer != null)
+            {
+                _timer.Dispose();
+            }
         }
 
         private void TimerCallback(object state)
         {
-            Tick?.Invoke();
+            var call = Tick;
+            if (call != null)
+            {
+                call();
+            }
         }
     }
 }

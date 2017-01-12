@@ -77,10 +77,14 @@ namespace TinyWebService.Tests
             Serialize<IEnumerable<string>>(new[] { "1", "2", "3"}).ShouldBe("[1,2,3]");
             Serialize<IList<string>>(new[] { "1", "2", "3" }).ShouldBe("[1,2,3]");
             Serialize<string[]>(new[] { "1", "2", "3" }).ShouldBe("[1,2,3]");
+            Serialize<string[]>(new string[0]).ShouldBe("[]");
+            Serialize<string[]>(null).ShouldBe("");
 
             Deserialize<IEnumerable<string>>("[1,2,3]").ShouldBe(new[] { "1", "2", "3" });
             Deserialize<IList<string>>("[1,2,3]").ShouldBe(new[] { "1", "2", "3" });
             Deserialize<string[]>("[1,2,3]").ShouldBe(new[] { "1", "2", "3" });
+            Deserialize<string[]>("[]").ShouldBe(new string[0]);
+            Deserialize<string[]>("").ShouldBeNull();
         }
 
         [Test]

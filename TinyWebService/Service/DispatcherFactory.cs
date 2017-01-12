@@ -10,6 +10,7 @@ using System.Windows.Threading;
 using TinyWebService.Infrastructure;
 using TinyWebService.Protocol;
 using TinyWebService.Reflection;
+using TinyWebService.Utilities;
 
 namespace TinyWebService.Service
 {
@@ -67,12 +68,23 @@ namespace TinyWebService.Service
 
             public Task<string> Execute(string path, IDictionary<string, string> parameters)
             {
-                return Actions.GetOrAdd(path, BindAction)(_instance, _endpoint, parameters);
+                try
+                {
+                    return Actions.GetOrAdd(path, BindAction)(_instance, _endpoint, parameters);
+                }
+                catch (Exception ex)
+                {
+                    return Tasks.FromException<string>(ex);
+                }
             }
 
             public void Dispose()
             {
-                (_instance as IDisposable)?.Dispose();
+                var disposable = _instance as IDisposable;
+                if (disposable != null)
+                {
+                    disposable.Dispose();
+                }
             }
 
             private Func<T, IEndpoint, IDictionary<string, string>, Task<string>> BindAction(string path)

@@ -72,7 +72,18 @@ namespace TinyWebService.Tests
             var root = new Root();
             var dispatcher = DispatcherFactory.CreateDispatcher(root, null, false);
 
-            new Action(() => { dispatcher.Execute("IntValue/InvalidPath", new Dictionary<string, string>()); }).ShouldThrow<InvalidOperationException>();
+            var task = dispatcher.Execute("IntValue/InvalidPath", new Dictionary<string, string>());
+            new Action(() => { task.Wait(); }).ShouldThrow<Exception>();
+        }
+
+        [Test]
+        public void ShouldFailTaskOnExceptionInDispatchedCode()
+        {
+            var root = new Root();
+            var dispatcher = DispatcherFactory.CreateDispatcher(root, null, false);
+
+            var task = dispatcher.Execute("Throw", new Dictionary<string, string>());
+            new Action(() => { task.Wait(); }).ShouldThrow<Exception>();
         }
 
         [Test]

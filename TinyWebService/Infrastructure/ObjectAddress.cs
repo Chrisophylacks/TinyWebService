@@ -10,9 +10,9 @@ namespace TinyWebService.Infrastructure
             InstanceId = instanceId;
         }
 
-        public string Endpoint { get; }
+        public string Endpoint { get; private set; }
 
-        public string InstanceId { get; }
+        public string InstanceId { get; private set; }
 
         public static ObjectAddress Parse(string encodedAddress)
         {

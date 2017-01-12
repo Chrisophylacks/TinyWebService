@@ -17,7 +17,7 @@ namespace TinyWebService.Client
             _executor = Endpoint.GetExecutor(Address.Endpoint + "/");
         }
 
-        public ObjectAddress Address { get; }
+        public ObjectAddress Address { get; private set; }
 
         public Task<T> CastProxy<T>()
             where T : class

@@ -19,10 +19,13 @@ namespace TinyWebService.Reflection
             }
         }
 
-        public bool IsAsync => AsyncType != null;
+        public bool IsAsync
+        {
+            get { return AsyncType != null; }
+        }
 
-        public Type ReturnType { get; }
+        public Type ReturnType { get; private set; }
 
-        public Type AsyncType { get; }
+        public Type AsyncType { get; private set; }
     }
 }

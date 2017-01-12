@@ -168,16 +168,28 @@ namespace TinyWebService.Protocol
                 ExistingSerializers.TryAdd(typeof(T), this);
             }
 
-            public static Serializer<T> Instance => _instance ?? (_instance = new Serializer<T>());
+            public static Serializer<T> Instance 
+            {
+                get
+                {
+                    return _instance ?? (_instance = new Serializer<T>());
+                }
+            }
 
             public static void RegisterCustom(Func<T, string> serialize, Func<string, T> deserialize)
             {
                 _instance = new Serializer<T>(serialize, deserialize);
             }
 
-            public static string Serialize(IEndpoint endpoint, T value) => Instance._serialize(endpoint, value);
+            public static string Serialize(IEndpoint endpoint, T value)
+            {
+                return Instance._serialize(endpoint, value);
+            }
 
-            public static T Deserialize(IEndpoint endpoint, string value) => Instance._deserialize(endpoint, value);
+            public static T Deserialize(IEndpoint endpoint, string value)
+            {
+                return Instance._deserialize(endpoint, value);
+            }
 
             private static Expression SerializeExpression(Expression endpoint, Expression value)
             {
@@ -265,7 +277,7 @@ namespace TinyWebService.Protocol
                     var enumerable = Expression.Call(typeof(Serializer<>).MakeGenericType(itemType).GetMethod("DeserializeCollection", BindingFlags.NonPublic | BindingFlags.Static), endpoint, value);
                     if (targetType.IsArray)
                     {
-                        return Expression.Call(typeof (Enumerable).GetMethod("ToArray").MakeGenericMethod(itemType), enumerable);
+                        return Expression.Call(typeof(Serializer<>).MakeGenericType(itemType).GetMethod("CollectionToArray", BindingFlags.NonPublic | BindingFlags.Static), enumerable);
                     }
                     return enumerable;
                 }
@@ -313,12 +325,32 @@ namespace TinyWebService.Protocol
 
             private static string SerializeCollection(IEndpoint endpoint, IEnumerable<T> collection)
             {
+                if (collection == null)
+                {
+                    return string.Empty;
+                }
+
                 return "[" + string.Join(",", collection.Select(x => Instance._serialize(endpoint, x))) + "]";
             }
 
             private static IList<T> DeserializeCollection(IEndpoint endpoint, string value)
             {
-                return value.Substring(1, value.Length - 2).Split(',').Select(x => Instance._deserialize(endpoint, x)).ToList();
+                if (string.IsNullOrEmpty(value))
+                {
+                    return null;
+                }
+
+                return value.Substring(1, value.Length - 2).Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(x => Instance._deserialize(endpoint, x)).ToList();
+            }
+
+            private static T[] CollectionToArray(IEnumerable<T> collection)
+            {
+                if (collection == null)
+                {
+                    return null;
+                }
+
+                return collection.ToArray();
             }
 
             private static string SerializeClass(T instance)

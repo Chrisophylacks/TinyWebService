@@ -21,9 +21,9 @@ namespace TinyWebService.Reflection
             Parameters = parameterTypes.Select(Expression.Parameter).ToArray();
         }
 
-        public ParameterExpression This { get; }
+        public ParameterExpression This { get; private set; }
 
-        public ParameterExpression[] Parameters { get; }
+        public ParameterExpression[] Parameters { get; private set; }
 
         public void Implement(Expression body)
         {

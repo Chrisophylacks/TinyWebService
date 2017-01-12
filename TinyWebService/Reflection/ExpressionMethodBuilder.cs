@@ -31,9 +31,9 @@ namespace TinyWebService.Reflection
 
         public MethodInfo Method { get; private set; }
 
-        public ParameterExpression This { get; }
+        public ParameterExpression This { get; private set; }
 
-        public ParameterExpression[] Parameters { get; }
+        public ParameterExpression[] Parameters { get; private set; }
 
         public void Implement(Expression body)
         {

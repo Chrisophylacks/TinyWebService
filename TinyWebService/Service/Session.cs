@@ -99,7 +99,7 @@ namespace TinyWebService.Service
                 LastOperationId = operationId;
             }
 
-            public ISimpleDispatcher Dispatcher { get; }
+            public ISimpleDispatcher Dispatcher { get; private set; }
             public long LastOperationId { get; set; }
         }
     }

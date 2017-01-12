@@ -13,8 +13,8 @@ namespace TinyWebService.Tests.Stubs
             _realProxy = realProxy;
         }
 
-        public T CurrentValue => _getValue();
+        public T CurrentValue {get { return _getValue(); } }
 
-        object IRemotableInstance.RealProxy => _realProxy;
+        object IRemotableInstance.RealProxy { get { return _realProxy; } }
     }
 }

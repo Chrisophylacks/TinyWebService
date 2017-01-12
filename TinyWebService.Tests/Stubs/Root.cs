@@ -13,15 +13,15 @@ namespace TinyWebService.Tests.Stubs
             EnumValue = new ValueContainer<TypeCode>(TypeCode.Boolean);
         }
 
-        public IValueContainer<bool> BooleanValue { get; }
+        public IValueContainer<bool> BooleanValue { get; private set; }
 
-        public IValueContainer<int> IntValue { get; }
+        public IValueContainer<int> IntValue { get; private set; }
 
-        public IValueContainer<string> StringValue { get; }
+        public IValueContainer<string> StringValue { get; private set; }
 
-        public IValueContainer<double> DoubleContainer { get; }
+        public IValueContainer<double> DoubleContainer { get; private set; }
 
-        public IValueContainer<TypeCode> EnumValue { get; }
+        public IValueContainer<TypeCode> EnumValue { get; private set; }
 
         public string Combine(string delimiter)
         {
@@ -31,6 +31,11 @@ namespace TinyWebService.Tests.Stubs
         public IValueContainer<string> CreateContainer(string initialValue)
         {
             return new ValueContainer<string>(initialValue);
+        }
+
+        public void Throw()
+        {
+            throw new Exception();
         }
 
         public IRoot Clone()

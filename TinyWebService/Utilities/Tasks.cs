@@ -14,5 +14,12 @@ namespace TinyWebService.Utilities
             tcs.SetResult(result);
             return tcs.Task;
         }
+
+        public static Task<T> FromException<T>(Exception ex)
+        {
+            var tcs = new TaskCompletionSource<T>();
+            tcs.SetException(ex);
+            return tcs.Task;
+        }
     }
 }

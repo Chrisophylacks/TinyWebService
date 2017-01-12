@@ -36,11 +36,14 @@ namespace TinyWebService.Reflection
             Value = Expression.Parameter(property.PropertyType, "value");
         }
 
-        public PropertyInfo Property => _property;
+        public PropertyInfo Property
+        { 
+            get { return _property; }
+        }
 
-        public ParameterExpression Value { get; }
+        public ParameterExpression Value { get; private set; }
 
-        public ParameterExpression This { get; }
+        public ParameterExpression This { get; private set; }
 
         public void ImplementGetter(Expression body)
         {

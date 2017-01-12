@@ -55,8 +55,15 @@ namespace TinyWebService.Infrastructure
 
         public void Dispose()
         {
-            _server?.Dispose();
-            _session?.Dispose();
+            if (_server != null)
+            {
+                _server.Dispose();
+            }
+
+            if (_session != null)
+            {
+                _session.Dispose();
+            }
         }
    }
 }

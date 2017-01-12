@@ -30,13 +30,25 @@ namespace TinyWebService
 
         public static string GetExternalAddress(object proxy)
         {
-            return TinyProtocol.GetRealProxy(proxy)?.Address.Encode();
+            var realProxy = TinyProtocol.GetRealProxy(proxy);
+            if (realProxy == null)
+            {
+                return null;
+            }
+
+            return realProxy.Address.Encode();
         }
 
         public static TResult CastProxy<TResult>(object proxy)
             where TResult : class
         {
-            return TinyProtocol.GetRealProxy(proxy)?.CastProxy<TResult>().Result;
+            var realProxy = TinyProtocol.GetRealProxy(proxy);
+            if (realProxy == null)
+            {
+                return null;
+            }
+
+            return realProxy.CastProxy<TResult>().Result;
         }
 
         public static void RegisterCustomProxyFactory<TProxyFactory>()
