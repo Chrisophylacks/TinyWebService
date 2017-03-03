@@ -71,6 +71,7 @@
     <Compile Include="SimpleDispatcherFixture.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Stubs\IDynamicValueProxy.cs" />
+    <Compile Include="Stubs\IGenericBaseInterface.cs" />
     <Compile Include="Stubs\IGenericFinder.cs" />
     <Compile Include="Stubs\IMethodRoot.cs" />
     <Compile Include="Stubs\IRoot.cs" />

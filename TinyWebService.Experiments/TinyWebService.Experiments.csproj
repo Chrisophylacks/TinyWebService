@@ -53,6 +53,7 @@
     <Compile Include="MultiReturnTest.cs" />
     <Compile Include="MultiServer.cs" />
     <Compile Include="Nested.cs" />
+    <Compile Include="NullableTest.cs" />
     <Compile Include="OverloadsTest.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -39,7 +39,13 @@ namespace TinyWebService.Protocol
             var itemType = type.TryGetCollectionItemType();
             if (itemType != null)
             {
-                return Check(itemType) & (TypeFlags.CanSerialize | TypeFlags.CanDeserialize);
+                return Check(itemType) & TypeFlags.DataType;
+            }
+
+            var nullableType = Nullable.GetUnderlyingType(type);
+            if (nullableType != null)
+            {
+                return Check(nullableType) & TypeFlags.DataType;
             }
 
             if (type.IsGenericType && CustomFactories.ContainsKey(type.GetGenericTypeDefinition()))
@@ -228,6 +234,15 @@ namespace TinyWebService.Protocol
                     return Expression.Call(typeof(Serializer<>).MakeGenericType(itemType).GetMethod("SerializeCollection", BindingFlags.NonPublic | BindingFlags.Static), endpoint, value);
                 }
 
+                var nullableType = Nullable.GetUnderlyingType(value.Type);
+                if (nullableType != null && Check(nullableType).CanSerialize())
+                {
+                    return Expression.Condition(
+                        Expression.MakeMemberAccess(value, value.Type.GetProperty("HasValue")),
+                        SerializeExpression(endpoint, Expression.MakeMemberAccess(value, value.Type.GetProperty("Value"))),
+                        Expression.Constant(string.Empty));
+                }
+
                 if (Check(value.Type).CanBuildDispatcher())
                 {
                     return Expression.Call(
@@ -280,6 +295,15 @@ namespace TinyWebService.Protocol
                         return Expression.Call(typeof(Serializer<>).MakeGenericType(itemType).GetMethod("CollectionToArray", BindingFlags.NonPublic | BindingFlags.Static), enumerable);
                     }
                     return enumerable;
+                }
+
+                var nullableType = Nullable.GetUnderlyingType(targetType);
+                if (nullableType != null && Check(nullableType).CanSerialize())
+                {
+                    return Expression.Condition(
+                        Expression.Call(typeof(string).GetMethod("IsNullOrEmpty"), value),
+                        Expression.New(targetType),
+                        Expression.New(targetType.GetConstructor(new[] {nullableType}), DeserializeExpression(endpoint, value, nullableType)));
                 }
 
                 if (Check(targetType).CanBuildProxy())

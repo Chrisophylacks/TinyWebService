@@ -98,13 +98,22 @@ namespace TinyWebService.Tests
         }
 
         [Test]
-        public void ShouldResolveAmbiguityByDiscardingIncompatibleMethods()
+        public void ShouldResolveAmbiguityByDiscardingMethodsWithIncompatibleParameters()
         {
             var service = new Mock<IAmbiguousMethodsService>();
             var dispatcher = DispatcherFactory.CreateDispatcher(service.Object, null, false);
 
             dispatcher.Execute("Execute", new Dictionary<string, string> { { "arg", "value" } });
             service.Verify(x => x.Execute("value"));
+        }
+
+        [Test]
+        public void ShouldResolveAmbiguityByDiscardingGenericMethods()
+        {
+            var service = new GenericInterfaceImpl(new[] { "a", "b", "c" });
+            var dispatcher = DispatcherFactory.CreateDispatcher(service, null, false);
+
+            dispatcher.Execute("GetItems", new Dictionary<string, string>()).Result.ShouldBe("[a,b,c]");
         }
     }
 }

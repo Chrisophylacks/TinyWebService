@@ -119,6 +119,7 @@ namespace TinyWebService.Service
                     var indexer = typeof (IDictionary<string, string>).GetProperty("Item");
                     var method = current.Type.GetTypeHierarchy()
                         .SelectMany(x => x.GetMethods(BindingFlags.Public | BindingFlags.Instance))
+                        .Where(x => !x.IsGenericMethod)
                         .FirstOrDefault(x => x.Name == entries[i] && x.GetParameters().All(p => TinyProtocol.Check(p.ParameterType).CanDeserialize()));
                     if (method == null)
                     {

@@ -44,6 +44,22 @@ namespace TinyWebService.Tests
         }
 
         [Test]
+        public void ShouldSerializeNullables()
+        {
+            Serialize<int?>(123).ShouldBe("123");
+            Serialize<int?>(null).ShouldBe(string.Empty);
+            Serialize<double?>(123.4).ShouldBe("123.4");
+            Serialize<double?>(null).ShouldBe(string.Empty);
+
+            Deserialize<int?>("123").ShouldBe(123);
+            Deserialize<int?>(string.Empty).ShouldBe(null);
+            Deserialize<int?>(null).ShouldBe(null);
+            Deserialize<double?>("123.4").ShouldBe(123.4);
+            Deserialize<double?>(string.Empty).ShouldBe(null);
+            Deserialize<double?>(null).ShouldBe(null);
+        }
+
+        [Test]
         public void ShouldSerializeCustomProxies()
         {
             var instance = new DynamicValue<int>(null, () => 0);

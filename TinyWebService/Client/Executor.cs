@@ -58,7 +58,6 @@ namespace TinyWebService.Client
         {
             var request = (HttpWebRequest)WebRequest.Create(new Uri(_prefix + path));
             request.Timeout = (int)Timeout.TotalMilliseconds;
-            Task current = null;
 
             if (parameters == null || parameters.Count == 0)
             {
