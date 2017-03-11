@@ -41,6 +41,16 @@ namespace TinyWebService.Client
             return TinyProtocol.Serializer<T>.Deserialize(Endpoint, Address.Combine(subPath).Encode());
         }
 
+        public Task KeepAlive()
+        {
+            return ExecuteQuery(TinyProtocol.KeepAlivePath, CreateQueryBuilder());
+        }
+
+        public Task DisposeRemote()
+        {
+            return ExecuteQuery(TinyProtocol.DisposePath, CreateQueryBuilder());
+        }
+
         protected IDictionary<string, string> CreateQueryBuilder()
         {
             var dict = new Dictionary<string, string>();

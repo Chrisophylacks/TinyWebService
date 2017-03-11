@@ -14,24 +14,8 @@ namespace TinyWebService.Experiments
             //NestedTest.Run();
             //MultiReturnTest.Run();
             //DowncastTest.Run();
-            //OverloadsTest.Run();
-            NullableTest.Run();
+            OverloadsTest.Run();
             Console.ReadLine();
-        }
-
-        static void TestProbing()
-        {
-            try
-            {
-                TinyClient.Create<IServer>("test");
-            }
-            catch (TinyWebServiceException)
-            {
-            }
-            catch (Exception)
-            {
-                throw;
-            }
         }
     }
 }

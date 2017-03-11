@@ -12,27 +12,33 @@ namespace TinyWebService.Infrastructure
 
         private readonly string _prefix;
         private readonly bool _useThreadDispatcher;
+        private readonly TimeSpan _cleanupInterval;
+        private readonly TimeSpan _tickInterval;
         private Session _session;
 
         private static IEndpoint _clientEndpoint;
 
-        public static IEndpoint DefaultClientEndpoint
+        public static IEndpoint DefaultClientEndpoint => _clientEndpoint ?? (_clientEndpoint = new Endpoint(TinyProtocol.CreatePrefix(null, TinyServiceOptions.DefaultCallbackPort, Guid.NewGuid().ToString("N")), null, false, TimeSpan.Zero));
+
+        public static IEndpoint CreateServerEndpoint(string prefix, object rootInstance, bool useThreadDispatcher, TimeSpan cleanupInterval)
         {
-            get { return _clientEndpoint ?? (_clientEndpoint = new Endpoint(TinyProtocol.CreatePrefix(null, TinyServiceOptions.DefaultCallbackPort, Guid.NewGuid().ToString("N")), null, false)); }
+            return new Endpoint(prefix, rootInstance, useThreadDispatcher, cleanupInterval);
         }
 
-        public static IEndpoint CreateServerEndpoint(string prefix, object rootInstance, bool useThreadDispatcher)
-        {
-            return new Endpoint(prefix, rootInstance, useThreadDispatcher);
-        }
-
-        public Endpoint(string prefix, object rootInstance, bool useThreadDispatcher)
+        public Endpoint(string prefix, object rootInstance, bool useThreadDispatcher, TimeSpan cleanupInterval)
         {
             _prefix = prefix;
             _useThreadDispatcher = useThreadDispatcher;
+            _cleanupInterval = cleanupInterval;
+            _tickInterval = TimeSpan.FromMinutes(1);
+            if (_tickInterval > _cleanupInterval)
+            {
+                _tickInterval = _cleanupInterval;
+            }
+
             if (rootInstance != null)
             {
-                _session = new Session(new SimpleTimer(TimeSpan.FromMinutes(5)), DispatcherFactory.CreateDispatcher(rootInstance, this, useThreadDispatcher));
+                _session = new Session(new SimpleTimer(_tickInterval), _cleanupInterval, DispatcherFactory.CreateDispatcher(rootInstance, this, useThreadDispatcher));
                 _server = new TinyHttpServer(prefix, _session);
             }
         }
@@ -46,7 +52,7 @@ namespace TinyWebService.Infrastructure
         {
             if (_session == null)
             {
-                _session = new Session(new SimpleTimer(TimeSpan.FromMinutes(5)));
+                _session = new Session(new SimpleTimer(_tickInterval), _cleanupInterval);
                 _server = new TinyHttpServer(_prefix, _session);
             }
 
@@ -55,15 +61,8 @@ namespace TinyWebService.Infrastructure
 
         public void Dispose()
         {
-            if (_server != null)
-            {
-                _server.Dispose();
-            }
-
-            if (_session != null)
-            {
-                _session.Dispose();
-            }
+            _server?.Dispose();
+            _session?.Dispose();
         }
    }
 }

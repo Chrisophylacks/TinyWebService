@@ -59,23 +59,33 @@ namespace TinyWebService.Service
             var path = HttpUtility.UrlDecode(context.Request.Url.AbsolutePath);
             var query = context.Request.HttpMethod == "GET" ? context.Request.Url.Query : new StreamReader(context.Request.InputStream).ReadToEnd();
 
-            _session.Execute(path, HttpUtility.UrlDecode(query)).ContinueWith(x =>
+            try
             {
-                string response;
-                try
+                _session.Execute(path, HttpUtility.UrlDecode(query)).ContinueWith(x =>
                 {
-                    response = x.Result;
-                }
-                catch (Exception ex)
-                {
-                    context.Response.StatusCode = 500;
-                    response = ex.ToString();
-                }
+                    try
+                    {
+                        SendResponse(context, x.Result, 200);
+                    }
+                    catch (Exception ex)
+                    {
+                        SendResponse(context, ex.ToString(), 500);
+                    }
 
-                var responseBuffer = Encoding.UTF8.GetBytes(response ?? String.Empty);
-                context.Response.OutputStream.Write(responseBuffer, 0, responseBuffer.Length);
-                context.Response.OutputStream.Close();
-            }, TaskContinuationOptions.ExecuteSynchronously);
+                }, TaskContinuationOptions.ExecuteSynchronously);
+            }
+            catch (Exception ex)
+            {
+                SendResponse(context, ex.ToString(), 500);
+            }
+        }
+
+        private void SendResponse(HttpListenerContext context, string response, int statusCode)
+        {
+            context.Response.StatusCode = statusCode;
+            var responseBuffer = Encoding.UTF8.GetBytes(response ?? String.Empty);
+            context.Response.OutputStream.Write(responseBuffer, 0, responseBuffer.Length);
+            context.Response.OutputStream.Close();
         }
     }
 }

@@ -1,9 +1,6 @@
 ﻿using System;
-using TinyWebService.Client;
 using TinyWebService.Infrastructure;
 using TinyWebService.Protocol;
-using TinyWebService.Service;
-using TinyWebService.Utilities;
 
 namespace TinyWebService
 {
@@ -56,7 +53,7 @@ namespace TinyWebService
             public IDisposable AtEndpoint(string endpointName)
             {
                 var prefix = TinyProtocol.CreatePrefix(_allowExternalConnections ? "*" : null, _port, endpointName);
-                return Endpoint.CreateServerEndpoint(prefix, _service, _useThreadDispatcher);
+                return Endpoint.CreateServerEndpoint(prefix, _service, _useThreadDispatcher, _cleanupInterval);
             }
         }
     }

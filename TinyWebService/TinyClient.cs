@@ -1,5 +1,5 @@
 ﻿using System;
-using TinyWebService.Client;
+using System.Threading.Tasks;
 using TinyWebService.Infrastructure;
 using TinyWebService.Protocol;
 
@@ -30,25 +30,24 @@ namespace TinyWebService
 
         public static string GetExternalAddress(object proxy)
         {
-            var realProxy = TinyProtocol.GetRealProxy(proxy);
-            if (realProxy == null)
-            {
-                return null;
-            }
-
-            return realProxy.Address.Encode();
+            return TinyProtocol.GetRealProxy(proxy)?.Address.Encode();
         }
 
         public static TResult CastProxy<TResult>(object proxy)
             where TResult : class
         {
             var realProxy = TinyProtocol.GetRealProxy(proxy);
-            if (realProxy == null)
-            {
-                return null;
-            }
+            return realProxy?.CastProxy<TResult>().Result;
+        }
 
-            return realProxy.CastProxy<TResult>().Result;
+        public static Task KeepAlive(object proxy)
+        {
+            return TinyProtocol.GetRealProxy(proxy).KeepAlive();
+        }
+
+        public static Task Dispose(object proxy)
+        {
+            return TinyProtocol.GetRealProxy(proxy).DisposeRemote();
         }
 
         public static void RegisterCustomProxyFactory<TProxyFactory>()

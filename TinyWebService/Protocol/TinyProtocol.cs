@@ -19,6 +19,8 @@ namespace TinyWebService.Protocol
     {
         public const string InstanceIdParameterName = "~i";
         public const string MetadataPath = "~meta";
+        public const string KeepAlivePath = "~keepalive";
+        public const string DisposePath = "~dispose";
         public const string DetachCommand = "~detach";
 
         private static readonly ConcurrentDictionary<Type, object> ExistingSerializers = new ConcurrentDictionary<Type, object>();

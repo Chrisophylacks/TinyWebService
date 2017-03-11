@@ -59,8 +59,12 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Integration\IntegrationFixture.cs" />
+    <Compile Include="Integration\RetentionFixture.cs" />
     <Compile Include="ProxiesFixture.cs" />
     <Compile Include="SerializerFixture.cs" />
+    <Compile Include="Services\IRetentionService.cs" />
+    <Compile Include="Services\INullableTestService.cs" />
     <Compile Include="Stubs\CustomProxyFactory.cs" />
     <Compile Include="Stubs\DataObject.cs" />
     <Compile Include="Stubs\DispatcherRoot.cs" />
