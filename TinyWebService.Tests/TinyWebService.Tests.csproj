@@ -61,6 +61,7 @@
   <ItemGroup>
     <Compile Include="Integration\IntegrationFixture.cs" />
     <Compile Include="Integration\RetentionFixture.cs" />
+    <Compile Include="Integration\TimeoutFixture.cs" />
     <Compile Include="ProxiesFixture.cs" />
     <Compile Include="SerializerFixture.cs" />
     <Compile Include="Services\IRetentionService.cs" />

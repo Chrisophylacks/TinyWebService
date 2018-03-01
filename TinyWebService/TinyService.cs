@@ -18,8 +18,9 @@ namespace TinyWebService
             private readonly T _service;
             private bool _useThreadDispatcher;
             private bool _allowExternalConnections;
-            private int _port = 14048;
+            private int _port = TinyProtocol.DefaultPort;
             private TimeSpan _cleanupInterval = TimeSpan.FromMinutes(5);
+            private TimeSpan _executionTimeout = TimeSpan.FromSeconds(30);
 
             internal Builder(T service)
             {
@@ -44,6 +45,12 @@ namespace TinyWebService
                 return this;
             }
 
+            public Builder<T> WithExecutionTimeout(TimeSpan timeout)
+            {
+                _executionTimeout = timeout;
+                return this;
+            }
+
             public Builder<T> AllowExternalConnections(bool allow = true)
             {
                 _allowExternalConnections = allow;
@@ -53,7 +60,7 @@ namespace TinyWebService
             public IDisposable AtEndpoint(string endpointName)
             {
                 var prefix = TinyProtocol.CreatePrefix(_allowExternalConnections ? "*" : null, _port, endpointName);
-                return Endpoint.CreateServerEndpoint(prefix, _service, _useThreadDispatcher, _cleanupInterval);
+                return new Endpoint(prefix, _service, _useThreadDispatcher, _cleanupInterval, _executionTimeout);
             }
         }
     }

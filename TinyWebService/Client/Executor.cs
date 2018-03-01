@@ -13,10 +13,10 @@ namespace TinyWebService.Client
 
         private readonly string _prefix;
 
-        public Executor(string prefix)
+        public Executor(string prefix, TimeSpan executionTimeout)
         {
             _prefix = prefix;
-            Timeout = TimeSpan.FromSeconds(30);
+            Timeout = executionTimeout;
         }
 
         public TimeSpan Timeout { get; set; }
@@ -45,6 +45,11 @@ namespace TinyWebService.Client
             var webException = ex as WebException ?? (ex.GetBaseException() as WebException);
             if (webException != null)
             {
+                if (webException.Status == WebExceptionStatus.Timeout)
+                {
+                    throw new TimeoutException();
+                }
+
                 if (webException.Response == null)
                 {
                     throw new TinyWebServiceException("Remote host not found");

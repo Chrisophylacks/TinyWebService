@@ -7,6 +7,7 @@ using System.Reflection.Emit;
 using TinyWebService.Infrastructure;
 using TinyWebService.Protocol;
 using TinyWebService.Reflection;
+using TinyWebService.Utilities;
 
 namespace TinyWebService.Client
 {
@@ -20,6 +21,9 @@ namespace TinyWebService.Client
         private static readonly MethodInfo CreateQuery;
         private static readonly MethodInfo CreateMemberProxy;
         private static readonly MethodInfo AddParameter;
+
+        private static readonly MethodInfo WaitEx;
+        private static readonly MethodInfo WaitExRet;
 
         private static readonly ConstructorInfo ExceptionConstructor;
 
@@ -35,6 +39,10 @@ namespace TinyWebService.Client
             CreateQuery = typeof(ProxyBase).GetMethod("CreateQueryBuilder", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             CreateMemberProxy = typeof(ProxyBase).GetMethod("CreateMemberProxy", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             AddParameter = typeof (IDictionary<string, string>).GetMethod("Add", BindingFlags.Public | BindingFlags.Instance);
+
+            var waits = typeof (Tasks).GetMethods(BindingFlags.Static | BindingFlags.Public);
+            WaitEx = waits.First(x => x.Name == "WaitEx" && !x.ContainsGenericParameters);
+            WaitExRet = waits.First(x => x.Name == "WaitEx" && x.ContainsGenericParameters);
 
             ExceptionConstructor = typeof (InvalidOperationException).GetConstructor(new[] { typeof (string) });
         }
@@ -96,9 +104,11 @@ namespace TinyWebService.Client
 
                     if (TinyProtocol.Check(signature.ReturnType).CanDeserialize())
                     {
-                        var call = signature.ReturnType == typeof (void)
+                        Expression call;
+                        call = signature.ReturnType == typeof(void)
                             ? builder.This.CallMember(ExecuteQuery, Expression.Constant(method.Name), dict)
                             : builder.This.CallMember(ExecuteQueryRet.MakeGenericMethod(signature.ReturnType), Expression.Constant(method.Name), dict);
+
                         block.Add(signature.IsAsync ? call : Wait(call));
                     }
                     else
@@ -204,10 +214,10 @@ namespace TinyWebService.Client
         {
             if (taskExpression.Type.IsGenericType)
             {
-                return Expression.Property(taskExpression, taskExpression.Type.GetProperty("Result"));
+                return Expression.Call(WaitExRet.MakeGenericMethod(taskExpression.Type.GetGenericArguments()[0]), taskExpression);
             }
 
-            return Expression.Call(taskExpression, taskExpression.Type.GetMethod("Wait", Type.EmptyTypes));
+            return Expression.Call(WaitEx, taskExpression);
         }
     }
 }

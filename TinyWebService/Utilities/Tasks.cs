@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace TinyWebService.Utilities
@@ -20,6 +17,30 @@ namespace TinyWebService.Utilities
             var tcs = new TaskCompletionSource<T>();
             tcs.SetException(ex);
             return tcs.Task;
+        }
+
+        public static T WaitEx<T>(Task<T> task)
+        {
+            try
+            {
+                return task.Result;
+            }
+            catch (AggregateException ex)
+            {
+                throw ex.GetBaseException();
+            }
+        }
+
+        public static void WaitEx(Task task)
+        {
+            try
+            {
+                task.Wait();
+            }
+            catch (AggregateException ex)
+            {
+                throw ex.GetBaseException();
+            }
         }
     }
 }

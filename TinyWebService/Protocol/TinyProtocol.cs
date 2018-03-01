@@ -17,6 +17,9 @@ namespace TinyWebService.Protocol
 {
     internal static class TinyProtocol
     {
+        public const int DefaultPort = 14048;
+        public const int DefaultCallbackPort = 14049;
+
         public const string InstanceIdParameterName = "~i";
         public const string MetadataPath = "~meta";
         public const string KeepAlivePath = "~keepalive";

@@ -25,7 +25,7 @@ namespace TinyWebService.Tests
             TinyProtocol.RegisterCustomProxyFactory<CustomProxyFactory>();
             _executor = new Mock<IExecutor>();
             _endpoint = new Mock<IEndpoint>();
-            _endpoint.Setup(x => x.GetExecutor(It.IsAny<string>())).Returns<string>(x => new PrefixedExecutor(x, _executor.Object));
+            _endpoint.Setup(x => x.GetExecutor(It.IsAny<string>(), It.IsAny<TimeSpan?>())).Returns<string, TimeSpan?>((x, t) => new PrefixedExecutor(x, _executor.Object));
         }
 
         [Test]
@@ -80,12 +80,6 @@ namespace TinyWebService.Tests
             public Task<string> Execute(string pathAndQuery, IDictionary<string, string> parameters = null)
             {
                 return _innerExecutor.Execute(_prefix + pathAndQuery, parameters);
-            }
-
-            public TimeSpan Timeout
-            {
-                get { return _innerExecutor.Timeout; }
-                set { _innerExecutor.Timeout = value; }
             }
         }
     }

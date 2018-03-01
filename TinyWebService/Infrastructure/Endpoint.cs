@@ -14,23 +14,16 @@ namespace TinyWebService.Infrastructure
         private readonly bool _useThreadDispatcher;
         private readonly TimeSpan _cleanupInterval;
         private readonly TimeSpan _tickInterval;
+        private readonly TimeSpan _executionTimeout;
         private Session _session;
 
-        private static IEndpoint _clientEndpoint;
-
-        public static IEndpoint DefaultClientEndpoint => _clientEndpoint ?? (_clientEndpoint = new Endpoint(TinyProtocol.CreatePrefix(null, TinyServiceOptions.DefaultCallbackPort, Guid.NewGuid().ToString("N")), null, false, TimeSpan.Zero));
-
-        public static IEndpoint CreateServerEndpoint(string prefix, object rootInstance, bool useThreadDispatcher, TimeSpan cleanupInterval)
-        {
-            return new Endpoint(prefix, rootInstance, useThreadDispatcher, cleanupInterval);
-        }
-
-        public Endpoint(string prefix, object rootInstance, bool useThreadDispatcher, TimeSpan cleanupInterval)
+        public Endpoint(string prefix, object rootInstance, bool useThreadDispatcher, TimeSpan cleanupInterval, TimeSpan executionTimeout)
         {
             _prefix = prefix;
             _useThreadDispatcher = useThreadDispatcher;
             _cleanupInterval = cleanupInterval;
             _tickInterval = TimeSpan.FromMinutes(1);
+            _executionTimeout = executionTimeout;
             if (_tickInterval > _cleanupInterval)
             {
                 _tickInterval = _cleanupInterval;
@@ -43,9 +36,9 @@ namespace TinyWebService.Infrastructure
             }
         }
 
-        public IExecutor GetExecutor(string prefix)
+        public IExecutor GetExecutor(string prefix, TimeSpan? overrideTimeout = null)
         {
-            return new Executor(prefix);
+            return new Executor(prefix, overrideTimeout ?? _executionTimeout);
         }
 
         public string RegisterInstance(object instance)

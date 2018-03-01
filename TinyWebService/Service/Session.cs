@@ -69,6 +69,20 @@ namespace TinyWebService.Service
                 return Tasks.FromResult("<meta/>");
             }
 
+            if (path == TinyProtocol.DisposePath)
+            {
+                var keys = string.IsNullOrEmpty(instanceId) ? _instances.Keys : new[] { instanceId };
+                foreach (var key in keys)
+                {
+                    RegisteredInstance instance;
+                    if (_instances.TryRemove(key, out instance))
+                    {
+                        instance.Dispatcher.Dispose();
+                    }
+                }
+                return Tasks.FromResult(string.Empty);
+            }
+
             var dispatcher = _rootInstance;
             if (!string.IsNullOrEmpty(instanceId))
             {
@@ -80,19 +94,8 @@ namespace TinyWebService.Service
                     return Tasks.FromResult(string.Empty);
                 }
 
-                if (path == TinyProtocol.DisposePath)
-                {
-                    if (_instances.TryRemove(instanceId, out instance))
-                    {
-                        instance.Dispatcher.Dispose();
-                    }
-                    return Tasks.FromResult(string.Empty);
-                }
-                else
-                {
-                    instance.ExpirationTime = _cleanupTimer.NextUptime + instance.RetentionTime;
-                    dispatcher = instance.Dispatcher;
-                }
+                instance.ExpirationTime = _cleanupTimer.NextUptime + instance.RetentionTime;
+                dispatcher = instance.Dispatcher;
             }
             else if (dispatcher == null)
             {
